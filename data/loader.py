@@ -45,17 +45,17 @@ class WormDataset(Dataset):
         img_path = os.path.join(self.img_dir, self.img_targets.iloc[idx, 0])
         source_image = np.array(Image.open(img_path)).astype("int16")
         source_image = np.expand_dims(source_image, axis=0)
-        source_image = torch.tensor(source_image, dtype=torch.short, device = self.device)
+        source_image = torch.tensor(source_image, dtype=torch.float32, device = self.device)
 
         img_path = os.path.join(self.img_dir, self.img_targets.iloc[idx, 1])
         target_asi = np.array(Image.open(img_path)).astype("int16")
         target_asi = np.expand_dims(target_asi, axis=0)
-        target_asi = torch.tensor(target_asi, dtype=torch.short, device = self.device)
+        target_asi = torch.tensor(target_asi, dtype=torch.float32, device = self.device)
    
         img_path = os.path.join(self.img_dir, self.img_targets.iloc[idx, 2])
         target_asj = np.array(Image.open(img_path)).astype("int16")
         target_asj = np.expand_dims(target_asj, axis=0)
-        target_asj = torch.tensor(target_asj, dtype=torch.short, device = self.device)
+        target_asj = torch.tensor(target_asj, dtype=torch.float32, device = self.device)
    
         if self.transform:
             source_image = self.transform(source_image)

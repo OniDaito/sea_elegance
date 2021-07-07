@@ -95,7 +95,7 @@ def load_data(args, device) -> Tuple[DataLoader]:
 
 
 def create_model(args, device) -> NetU:
-    model = NetU(dtype=torch.short)
+    model = NetU()
     model.to(device)
     return model
 
