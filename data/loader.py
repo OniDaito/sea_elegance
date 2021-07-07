@@ -25,7 +25,7 @@ def strip(text):
 
 
 class WormDataset(Dataset):
-    def __init__(self, annotations_file, img_dir, transform=None, target_transform=None):
+    def __init__(self, annotations_file, img_dir, transform=None, target_transform=None, device='cpu'):
         self.img_targets = pd.read_csv(annotations_file, names=["source", "asi", "asj"],
                     converters = {'source' : strip,
                                     'asi' : strip,
@@ -33,6 +33,7 @@ class WormDataset(Dataset):
         self.img_dir = img_dir
         self.transform = transform
         self.target_transform = target_transform
+        self.device = device
 
     def __len__(self):
         return len(self.img_targets)
@@ -44,20 +45,17 @@ class WormDataset(Dataset):
         img_path = os.path.join(self.img_dir, self.img_targets.iloc[idx, 0])
         source_image = np.array(Image.open(img_path)).astype("int16")
         source_image = np.expand_dims(source_image, axis=0)
-        source_image = torch.tensor(source_image, dtype=torch.short)
-        #source_image = torch.transpose(source_image, 0, 1)
+        source_image = torch.tensor(source_image, dtype=torch.float32, device = self.device)
 
         img_path = os.path.join(self.img_dir, self.img_targets.iloc[idx, 1])
         target_asi = np.array(Image.open(img_path)).astype("int16")
         target_asi = np.expand_dims(target_asi, axis=0)
-        target_asi = torch.tensor(target_asi, dtype=torch.short)
-        #target_asi = torch.transpose(target_asi, 0, 2)
+        target_asi = torch.tensor(target_asi, dtype=torch.float32, device = self.device)
    
         img_path = os.path.join(self.img_dir, self.img_targets.iloc[idx, 2])
         target_asj = np.array(Image.open(img_path)).astype("int16")
         target_asj = np.expand_dims(target_asj, axis=0)
-        target_asj = torch.tensor(target_asj, dtype=torch.short)
-        #target_asj = torch.transpose(target_asj, 0, 2)
+        target_asj = torch.tensor(target_asj, dtype=torch.float32, device = self.device)
    
         if self.transform:
             source_image = self.transform(source_image)

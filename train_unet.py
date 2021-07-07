@@ -78,11 +78,12 @@ def binaryise(input_tensor: torch.Tensor) -> torch.Tensor:
     return res
 
 
-def load_data(args) -> Tuple[DataLoader]:
+def load_data(args, device) -> Tuple[DataLoader]:
     # Do we need device? Moving the data onto the device for speed?
     worm_data = WormDataset(annotations_file=args.image_path + "/dataset.csv",
                             img_dir=args.image_path,
-                            target_transform=binaryise)
+                            target_transform=binaryise,
+                            device=device)
     print("Length of Worm Dataset", len(worm_data))
     assert(args.train_size + args.test_size +
            args.valid_size <= len(worm_data))
@@ -134,7 +135,7 @@ if __name__ == "__main__":
     device = torch.device("cuda" if use_cuda else "cpu")
 
     # Create all the things we need
-    train_data, test_data = load_data(args)
+    train_data, test_data = load_data(args, device)
     model = create_model(args, device)
     variables = list(model.parameters())
     optimiser = optim.Adam(variables, lr=args.lr)
