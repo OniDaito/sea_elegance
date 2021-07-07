@@ -22,21 +22,18 @@ import matplotlib.pyplot as plt
 class Data(unittest.TestCase):
     def test_loader(self):
         worm_data = WormDataset(annotations_file="./test/images/test_data.csv", img_dir='./test/images')
+        #train_size = 6
+        #test_size = 3
+        #train_dataset, test_dataset = torch.utils.data.random_split(worm_data, [train_size, test_size], generator=torch.Generator().manual_seed(42))
 
-        train_size = int(0.6 * len(worm_data))
-        test_size = len(worm_data) - train_size
+        dataloader = DataLoader(worm_data, batch_size=3, shuffle=False)
+        #test_dataloader = DataLoader(test_dataset, batch_size=3, shuffle=False)
 
-        train_dataset, test_dataset = torch.utils.data.random_split(worm_data, [train_size, test_size])
-
-        train_dataloader = DataLoader(train_dataset, batch_size=3, shuffle=True)
-        test_dataloader = DataLoader(test_dataset, batch_size=3, shuffle=True)
-
-        train_features, train_labels = next(iter(train_dataloader))
-        print(f"Feature batch shape: {train_features.size()}")
-        print(f"Labels batch shape: {train_labels.size()}")
-        img = train_features[0].squeeze()
-        label = train_labels[0]
-        plt.imshow(img, cmap="gray")
-        plt.show()
-        print(f"Label: {label}")
-
+        train_source, train_asi, train_asj = next(iter(dataloader))
+        print(f"Feature batch shape: {train_source.size()}")
+        print(f"Labels batch shape: {train_source.size()}")
+     
+        #print("value", train_source[0][0][114][517])
+        self.assertTrue(train_asi[0][0][121][501] == 1)
+        self.assertTrue(train_source[0][0][112][512] == 1467)
+        self.assertTrue(train_source[0][0][114][517] == 1612)

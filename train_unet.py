@@ -60,7 +60,8 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader, optimiser)
             loss.backward()
             optimiser.step()
 
-            print('Train Epoch / Step: {} {}.\tLoss: {:.6f}'.format(epoch, batch_idx, loss))
+            print(
+                'Train Epoch / Step: {} {}.\tLoss: {:.6f}'.format(epoch, batch_idx, loss))
 
             # We save here because we want our first step to be untrained
             # network
@@ -69,10 +70,24 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader, optimiser)
                 model.train()
 
 
+def binaryise(input_tensor: torch.Tensor) -> torch.Tensor:
+    ''' Convert the tensors so we don't have different numbers. If its
+    not a zero, it's a 1.'''
+    res = input_tensor.clone()
+    res[input_tensor != 0] = 1
+    return res
+
+
 def load_data(args) -> Tuple[DataLoader]:
-    worm_data = WormDataset(annotations_file=args.image_path + "/data.csv", img_dir=args.image_path)
-    assert(args.train_size + args.test_side + args.valid_side <= len(worm_data))
-    train_dataset, test_dataset = torch.utils.data.random_split(worm_data, [args.train_size, args.test_size])
+    # Do we need device? Moving the data onto the device for speed?
+    worm_data = WormDataset(annotations_file=args.image_path + "/dataset.csv",
+                            img_dir=args.image_path,
+                            target_transform=binaryise)
+    print("Length of Worm Dataset", len(worm_data))
+    assert(args.train_size + args.test_size +
+           args.valid_size <= len(worm_data))
+    train_dataset, test_dataset = torch.utils.data.random_split(
+        worm_data, [args.train_size, args.test_size])
     train_dataloader = DataLoader(train_dataset, batch_size=3, shuffle=True)
     test_dataloader = DataLoader(test_dataset, batch_size=3, shuffle=True)
     return (train_dataloader, test_dataloader)
@@ -96,7 +111,7 @@ if __name__ == "__main__":
                         help='learning rate (default: 0.001)')
     parser.add_argument('--no-cuda', action='store_true', default=False,
                         help='disables CUDA training')
-    parser.add_argument('--seed', type=int, default=1, metavar='S'
+    parser.add_argument('--seed', type=int, default=1, metavar='S',
                         help='random seed (default: 1)')
     parser.add_argument('--log-interval', type=int, default=100,
                         metavar='N',
@@ -119,7 +134,7 @@ if __name__ == "__main__":
     device = torch.device("cuda" if use_cuda else "cpu")
 
     # Create all the things we need
-    train_data, test_data = load_data(args, device)
+    train_data, test_data = load_data(args)
     model = create_model(args, device)
     variables = list(model.parameters())
     optimiser = optim.Adam(variables, lr=args.lr)
