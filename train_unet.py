@@ -11,12 +11,26 @@ train_unet.py - train our u-net model - our main entry point.
 import torch
 import argparse
 import torch.nn as nn
+import numpy as np
 from torch.utils.data import DataLoader
 import torch.nn.functional as F
 import torch.optim as optim
 from data.loader import WormDataset
 from typing import List, Tuple
 from net.unet import NetU
+import matplotlib.pyplot as plt
+from torch.utils.tensorboard import SummaryWriter
+
+
+def matplotlib_imshow(img, one_channel=False):
+    if one_channel:
+        img = img.mean(dim=0)
+    img = img / 2 + 0.5     # unnormalize
+    npimg = img.numpy()
+    if one_channel:
+        plt.imshow(npimg, cmap="Greys")
+    else:
+        plt.imshow(np.transpose(npimg, (1, 2, 0)))
 
 
 def loss_func(result, target) -> torch.Tensor:
@@ -25,7 +39,7 @@ def loss_func(result, target) -> torch.Tensor:
     return criterion(result, target)
 
 
-def test(args, model, test_data: DataLoader):
+def test(args, model, test_data: DataLoader, writer: SummaryWriter):
     model.eval()
 
     for idx, data in enumerate(test_data):
@@ -33,6 +47,20 @@ def test(args, model, test_data: DataLoader):
         result = model.forward(source)
         loss = loss_func(result, target_asi)
         print('Test Step: {}.\tLoss: {:.6f}'.format(idx, loss))
+
+        # Tensorboard
+        dataiter = iter(test_data)
+        images, labels = dataiter.next()
+
+        # create grid of images
+        img_grid = torchvision.utils.make_grid(images)
+
+        # show images
+        matplotlib_imshow(img_grid, one_channel=True)
+
+        # write to tensorboard
+        writer.add_image('test_images', img_grid)
+
 
         '''
         for jdx in range(batch_in):
@@ -49,7 +77,7 @@ def test(args, model, test_data: DataLoader):
         '''
 
 
-def train(args, model, train_data: DataLoader, test_data: DataLoader, optimiser):
+def train(args, model, train_data: DataLoader, test_data: DataLoader, optimiser, writer: SummaryWriter):
     model.train()
 
     for epoch in range(args.epochs):
@@ -66,6 +94,7 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader, optimiser)
             # We save here because we want our first step to be untrained
             # network
             if batch_idx % args.log_interval == 0:
+                save(args, model)
                 test(args, model, test_data)
                 model.train()
 
@@ -98,6 +127,10 @@ def create_model(args, device) -> NetU:
     model = NetU()
     model.to(device)
     return model
+
+
+def save(args, model):
+    torch.save(model, args.savedir + '/model.pth')
 
 
 if __name__ == "__main__":
@@ -140,5 +173,8 @@ if __name__ == "__main__":
     variables = list(model.parameters())
     optimiser = optim.Adam(variables, lr=args.lr)
 
+    # Start Tensorboard
+    writer = SummaryWriter(args.savedir + '/experiment_tensorboard')
+
     # Start training
-    train(args, model, train_data, test_data, optimiser)
+    train(args, model, train_data, test_data, optimiser, writer)
