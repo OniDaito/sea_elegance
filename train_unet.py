@@ -53,7 +53,7 @@ def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
 
     # create grid of images for tensorboard
     source_grid = torchvision.utils.make_grid(source, normalize=True, value_range=(0, 4095))
-    predict_grid = torchvision.utils.make_grid(result, normalize=True, value_range=(0, 1))
+    predict_grid = torchvision.utils.make_grid(result, normalize=True)
     target_grid = torchvision.utils.make_grid(target_asi)
 
     # show images
