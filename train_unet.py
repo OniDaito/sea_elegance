@@ -11,63 +11,16 @@ train_unet.py - train our u-net model - our main entry point.
 import torch
 import argparse
 import torch.nn as nn
+import numpy as np
 from torch.utils.data import DataLoader
 import torch.nn.functional as F
 import torch.optim as optim
 from data.loader import WormDataset
 from typing import List, Tuple
 from net.unet import NetU
-
-
-def loss_func(result, target) -> torch.Tensor:
-    # return F.l1_loss(result, target, reduction="sum")
-    criterion = nn.BCEWithLogitsLoss()
-    return criterion(result, target)
-
-
-def test(args, model, test_data: DataLoader):
-    model.eval()
-
-    for idx, data in enumerate(test_data):
-        (source, target_asi, _) = data
-        result = model.forward(source)
-        loss = loss_func(result, target_asi)
-        print('Test Step: {}.\tLoss: {:.6f}'.format(idx, loss))
-
-        '''
-        for jdx in range(batch_in):
-            save_image(batch_in[jdx][0],\
-                "log/input_e" + str(epoch).zfill(3) +\
-                "_i" + str(jdx).zfill(3) + ".png")
-            save_image(batch_out[jdx][0].float(),\
-                "log/target_e" + str(epoch).zfill(3) +\
-                "_i" + str(jdx).zfill(3) + ".png")
-            bin_img = torch.sigmoid(result[jdx][0]) > 0.5
-            save_image(bin_img.float(), "log/output_e" +\
-                str(epoch).zfill(3) +\
-                "_i" + str(jdx).zfill(3) + ".png")
-        '''
-
-
-def train(args, model, train_data: DataLoader, test_data: DataLoader, optimiser):
-    model.train()
-
-    for epoch in range(args.epochs):
-        for batch_idx, (source, target_asi, _) in enumerate(train_data):
-            optimiser.zero_grad()
-            result = model(source)
-            loss = loss_func(result, target_asi)
-            loss.backward()
-            optimiser.step()
-
-            print(
-                'Train Epoch / Step: {} {}.\tLoss: {:.6f}'.format(epoch, batch_idx, loss))
-
-            # We save here because we want our first step to be untrained
-            # network
-            if batch_idx % args.log_interval == 0:
-                test(args, model, test_data)
-                model.train()
+import matplotlib.pyplot as plt
+import torchvision
+from torch.utils.tensorboard import SummaryWriter
 
 
 def binaryise(input_tensor: torch.Tensor) -> torch.Tensor:
@@ -78,11 +31,72 @@ def binaryise(input_tensor: torch.Tensor) -> torch.Tensor:
     return res
 
 
-def load_data(args) -> Tuple[DataLoader]:
+def matplotlib_imshow(img_grid):
+    npimg = img_grid[0].numpy()
+    #npimg *= (255.0/npimg.max())
+    #npimg = npimg.astype("int8")
+    plt.imshow(npimg, cmap='jet')
+
+
+def loss_func(result, target) -> torch.Tensor:
+    # return F.l1_loss(result, target, reduction="sum")
+    criterion = nn.BCEWithLogitsLoss()
+    return criterion(result, target)
+
+
+def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
+    model.eval()
+    source, target_asi, _ = next(iter(test_data))
+    result = model.forward(source)
+    loss = loss_func(result, target_asi)
+    print('Test Step: {}.\tLoss: {:.6f}'.format(step, loss))
+
+    # create grid of images for tensorboard
+    source_grid = torchvision.utils.make_grid(source, normalize=True, value_range=(0, 4095))
+    predict_grid = torchvision.utils.make_grid(result, normalize=True, value_range=(0, 1))
+    target_grid = torchvision.utils.make_grid(target_asi)
+
+    # show images
+    matplotlib_imshow(source_grid.cpu())
+    matplotlib_imshow(predict_grid.cpu())
+    matplotlib_imshow(target_grid.cpu())
+
+    # write to tensorboard
+    writer.add_image('test_source_images', source_grid, step)
+    writer.add_image('test_predict_images', predict_grid, step)
+    writer.add_image('test_target_images', target_grid, step)
+    writer.add_scalar('test loss', loss, step)
+
+
+def train(args, model, train_data: DataLoader, test_data: DataLoader, optimiser, writer: SummaryWriter):
+    model.train()
+
+    for epoch in range(args.epochs):
+        for batch_idx, (source, target_asi, _) in enumerate(train_data):
+            optimiser.zero_grad()
+            result = model(source)
+            loss = loss_func(result, target_asi)
+            loss.backward()
+            optimiser.step()
+            step = epoch * len(train_data) + (batch_idx * args.batch_size)
+            writer.add_scalar('training loss', loss, step)
+            print(
+                'Train Epoch / Step: {} {}.\tLoss: {:.6f}'.format(epoch, batch_idx, loss))
+
+            # We save here because we want our first step to be untrained
+            # network
+            if batch_idx % args.log_interval == 0:
+                save(args, model)
+                test(args, model, test_data, step, writer)
+                model.train()
+
+
+def load_data(args, device) -> Tuple[DataLoader]:
     # Do we need device? Moving the data onto the device for speed?
     worm_data = WormDataset(annotations_file=args.image_path + "/dataset.csv",
                             img_dir=args.image_path,
-                            target_transform=binaryise)
+                            target_transform=binaryise,
+                            device=device)
     print("Length of Worm Dataset", len(worm_data))
     assert(args.train_size + args.test_size +
            args.valid_size <= len(worm_data))
@@ -99,6 +113,10 @@ def create_model(args, device) -> NetU:
     return model
 
 
+def save(args, model):
+    torch.save(model, args.savedir + '/model.pth')
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='PyTorch Shaper Train')
     parser.add_argument('--batch-size', type=int, default=2,
@@ -108,7 +126,7 @@ if __name__ == "__main__":
     parser.add_argument('--image-size', type=int, default=512, metavar='S',
                         help='Assuming square imaages, what is the size? (default: 512)')
     parser.add_argument('--lr', type=float, default=0.001, metavar='LR',
-                        help='learning rate (default: 0.001)')
+                        help='learning rate (default: 0.01)')
     parser.add_argument('--no-cuda', action='store_true', default=False,
                         help='disables CUDA training')
     parser.add_argument('--seed', type=int, default=1, metavar='S',
@@ -134,10 +152,18 @@ if __name__ == "__main__":
     device = torch.device("cuda" if use_cuda else "cpu")
 
     # Create all the things we need
-    train_data, test_data = load_data(args)
+    train_data, test_data = load_data(args, device)
     model = create_model(args, device)
     variables = list(model.parameters())
     optimiser = optim.Adam(variables, lr=args.lr)
 
+    # Start Tensorboard
+    writer = SummaryWriter(args.savedir + '/experiment_tensorboard')
+
     # Start training
-    train(args, model, train_data, test_data, optimiser)
+    train(args, model, train_data, test_data, optimiser, writer)
+
+    # Final things to write to tensorboard
+    images, _, _ = next(iter(train_data))
+    writer.add_graph(model, images)
+    writer.close()

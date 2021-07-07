@@ -32,8 +32,16 @@ class Data(unittest.TestCase):
         train_source, train_asi, train_asj = next(iter(dataloader))
         print(f"Feature batch shape: {train_source.size()}")
         print(f"Labels batch shape: {train_source.size()}")
+        print("Data type", train_source.dtype)
      
         #print("value", train_source[0][0][114][517])
         self.assertTrue(train_asi[0][0][121][501] == 1)
         self.assertTrue(train_source[0][0][112][512] == 1467)
         self.assertTrue(train_source[0][0][114][517] == 1612)
+
+        plt.figure()
+        f, axarr = plt.subplots(3, 1)
+        axarr[0].imshow(train_source[0].squeeze().numpy())
+        axarr[1].imshow(train_asi[0].squeeze().numpy())
+        axarr[2].imshow(train_asj[0].squeeze().numpy())
+        plt.show()

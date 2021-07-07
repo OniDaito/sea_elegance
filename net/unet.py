@@ -98,22 +98,22 @@ class NetU(nn.Module):
     ''' U-Net code, similiar to the above. Taken from
     https://github.com/milesial/Pytorch-UNet/.'''
 
-    def __init__(self):
+    def __init__(self, dtype=torch.float32):
         super(NetU, self).__init__()
         self.n_channels = 1
         self.n_classes = 1
         self.bilinear = True
 
-        self.inc = mp.DoubleConv(1, 64)
-        self.down1 = mp.Down(64, 128)
-        self.down2 = mp.Down(128, 256)
-        self.down3 = mp.Down(256, 512)
-        self.down4 = mp.Down(512, 512)
-        self.up1 = mp.Up(1024, 256, self.bilinear)
-        self.up2 = mp.Up(512, 128, self.bilinear)
-        self.up3 = mp.Up(256, 64, self.bilinear)
-        self.up4 = mp.Up(128, 64, self.bilinear)
-        self.outc = mp.OutConv(64, self.n_classes)
+        self.inc = mp.DoubleConv(1, 64, dtype=dtype)
+        self.down1 = mp.Down(64, 128, dtype=dtype)
+        self.down2 = mp.Down(128, 256, dtype=dtype)
+        self.down3 = mp.Down(256, 512, dtype=dtype)
+        self.down4 = mp.Down(512, 512, dtype=dtype)
+        self.up1 = mp.Up(1024, 256, self.bilinear, dtype=dtype)
+        self.up2 = mp.Up(512, 128, self.bilinear, dtype=dtype)
+        self.up3 = mp.Up(256, 64, self.bilinear, dtype=dtype)
+        self.up4 = mp.Up(128, 64, self.bilinear, dtype=dtype)
+        self.outc = mp.OutConv(64, self.n_classes, dtype=dtype)
 
     def forward(self, x):
         x1 = self.inc(x)
