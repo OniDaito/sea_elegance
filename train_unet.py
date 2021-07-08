@@ -58,7 +58,7 @@ def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
     sigged = torch.sigmoid(result)
     gated = torch.gt(sigged, 0.5)
     final = gated.int()
-    predict_grid = torchvision.utils.make_grid(final, normalize=True)
+    predict_grid = torchvision.utils.make_grid(final)
     target_grid = torchvision.utils.make_grid(target_asi)
 
     # show images
