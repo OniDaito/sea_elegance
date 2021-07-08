@@ -55,7 +55,8 @@ def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
     # 16 bit int image maximum really so use that range
     source_grid = torchvision.utils.make_grid(source, normalize=True, value_range=(0, 4095))
     # Pass output through a sigmnoid for single class prediction
-    gated = torch.sigmoid(result.cpu()) > 0.5
+    gated = torch.sigmoid(result)
+    gated = torch.gt(gated, 0.5)
     predict_grid = torchvision.utils.make_grid(gated.int(), normalize=True)
     target_grid = torchvision.utils.make_grid(target_asi)
 
