@@ -57,8 +57,8 @@ def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
     # Pass output through a sigmnoid for single class prediction
     sigged = torch.sigmoid(result)
     gated = torch.gt(sigged, 0.5)
-    print(gated)
-    predict_grid = torchvision.utils.make_grid(gated.int(), normalize=True)
+    print(torch.int(gated))
+    predict_grid = torchvision.utils.make_grid(torch.int(gated), normalize=True)
     target_grid = torchvision.utils.make_grid(target_asi)
 
     # show images
