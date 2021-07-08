@@ -52,8 +52,10 @@ def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
     print('Test Step: {}.\tLoss: {:.6f}'.format(step, loss))
 
     # create grid of images for tensorboard
+    # 16 bit int image maximum really so use that range
     source_grid = torchvision.utils.make_grid(source, normalize=True, value_range=(0, 4095))
-    predict_grid = torchvision.utils.make_grid(result, normalize=True)
+    # Pass output through a sigmnoid for single class prediction
+    predict_grid = torchvision.utils.make_grid(torch.sigmoid(result) > 0.5, normalize=True)
     target_grid = torchvision.utils.make_grid(target_asi)
 
     # show images
@@ -77,6 +79,8 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader, optimiser,
             result = model(source)
             loss = loss_func(result, target_asi)
             loss.backward()
+            # Nicked from U-net example - not sure why
+            nn.utils.clip_grad_value_(model.parameters(), 0.1)
             optimiser.step()
             step = epoch * len(train_data) + (batch_idx * args.batch_size)
             writer.add_scalar('training loss', loss, step)
@@ -126,7 +130,7 @@ if __name__ == "__main__":
     parser.add_argument('--image-size', type=int, default=512, metavar='S',
                         help='Assuming square imaages, what is the size? (default: 512)')
     parser.add_argument('--lr', type=float, default=0.001, metavar='LR',
-                        help='learning rate (default: 0.01)')
+                        help='learning rate (default: 0.001)')
     parser.add_argument('--no-cuda', action='store_true', default=False,
                         help='disables CUDA training')
     parser.add_argument('--seed', type=int, default=1, metavar='S',
