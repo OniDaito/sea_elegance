@@ -1,6 +1,5 @@
 # Sea Elegance
 
-
 Running the training:
 
     python train_unet.py --image-path ../wormz/queelim/dataset --train-size 41 --test-size 10
