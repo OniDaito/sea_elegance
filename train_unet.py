@@ -116,6 +116,7 @@ def load_data(args, device) -> Tuple[DataLoader]:
 
 def create_model(args, device) -> NetU:
     model = NetU()
+    model.device = device
     model.to(device)
     return model
 
