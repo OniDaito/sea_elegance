@@ -98,7 +98,7 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader, optimiser,
                 model.train()
 
 
-def load_data(args, device) -> Tuple[DataLoader]:
+def load_data(args, device) -> Tuple[DataLoader, DataLoader]:
     # Do we need device? Moving the data onto the device for speed?
     worm_data = WormDataset(annotations_file=args.image_path + "/dataset.csv",
                             img_dir=args.image_path,
@@ -109,8 +109,8 @@ def load_data(args, device) -> Tuple[DataLoader]:
            args.valid_size <= len(worm_data))
     train_dataset, test_dataset = torch.utils.data.random_split(
         worm_data, [args.train_size, args.test_size])
-    train_dataloader = DataLoader(train_dataset, batch_size=3, shuffle=True)
-    test_dataloader = DataLoader(test_dataset, batch_size=3, shuffle=True)
+    train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+    test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=True)
     return (train_dataloader, test_dataloader)
 
 
@@ -126,12 +126,10 @@ def save(args, model):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='PyTorch Shaper Train')
-    parser.add_argument('--batch-size', type=int, default=2,
-                        metavar='N', help='input batch size for training (default: 2)')
+    parser.add_argument('--batch-size', type=int, default=8,
+                        metavar='N', help='input batch size for training (default: 8)')
     parser.add_argument('--epochs', type=int, default=10, metavar='N',
                         help='number of epochs to train (default: 10)')
-    parser.add_argument('--image-size', type=int, default=512, metavar='S',
-                        help='Assuming square imaages, what is the size? (default: 512)')
     parser.add_argument('--lr', type=float, default=0.001, metavar='LR',
                         help='learning rate (default: 0.001)')
     parser.add_argument('--no-cuda', action='store_true', default=False,
