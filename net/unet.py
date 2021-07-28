@@ -46,20 +46,20 @@ class NetEncDec(nn.Module):
 
         # Conv layers
         # Added more conf layers as we aren't using maxpooling
-        self.conv1 = nn.Conv2d(1, 16, 5, stride=2, padding=1)
-        self.conv2 = nn.Conv2d(16, 32, 5, stride=2, padding=1)
-        self.conv3 = nn.Conv2d(32, 64, 5, stride=2, padding=1)
-        self.conv4 = nn.Conv2d(64, 128, 5, stride=2, padding=1)
-        self.conv5 = nn.Conv2d(128, 256, 5, stride=2, padding=1)
-        self.conv6 = nn.Conv2d(256, 256, 5, stride=2, padding=1)
+        self.conv1 = nn.Conv3d(1, 16, 5, stride=2, padding=1)
+        self.conv2 = nn.Conv3d(16, 32, 5, stride=2, padding=1)
+        self.conv3 = nn.Conv3d(32, 64, 5, stride=2, padding=1)
+        self.conv4 = nn.Conv3d(64, 128, 5, stride=2, padding=1)
+        self.conv5 = nn.Conv3d(128, 256, 5, stride=2, padding=1)
+        self.conv6 = nn.Conv3d(256, 256, 5, stride=2, padding=1)
         self.fc1 = nn.Linear(16384, 512)  # seems like a lot :/
 
-        self.deconv1 = nn.ConvTranspose2d(256, 256, 5, stride=2, padding=1)
-        self.deconv2 = nn.ConvTranspose2d(256, 128, 5, stride=2, padding=1)
-        self.deconv3 = nn.ConvTranspose2d(128, 64, 5, stride=2, padding=1)
-        self.deconv4 = nn.ConvTranspose2d(64, 32, 5, stride=2, padding=1)
-        self.deconv5 = nn.ConvTranspose2d(32, 16, 5, stride=2, padding=1)
-        self.deconv6 = nn.ConvTranspose2d(16, 1, 5, stride=2, padding=1,
+        self.deconv1 = nn.ConvTranspose3d(256, 256, 5, stride=2, padding=1)
+        self.deconv2 = nn.ConvTranspose3d(256, 128, 5, stride=2, padding=1)
+        self.deconv3 = nn.ConvTranspose3d(128, 64, 5, stride=2, padding=1)
+        self.deconv4 = nn.ConvTranspose3d(64, 32, 5, stride=2, padding=1)
+        self.deconv5 = nn.ConvTranspose3d(32, 16, 5, stride=2, padding=1)
+        self.deconv6 = nn.ConvTranspose3d(16, 1, 5, stride=2, padding=1,
                                           output_padding=1)
 
         self.device = "cpu"
