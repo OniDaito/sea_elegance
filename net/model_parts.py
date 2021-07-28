@@ -21,11 +21,11 @@ class DoubleConv(nn.Module):
     def __init__(self, in_channels, out_channels, dtype=torch.float32):
         super().__init__()
         self.double_conv = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1, dtype=dtype),
-            nn.BatchNorm2d(out_channels),
+            nn.Conv3d(in_channels, out_channels, kernel_size=3, padding=1, dtype=dtype),
+            nn.BatchNorm3d(out_channels),
             nn.ReLU(inplace=True),
-            nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, dtype=dtype),
-            nn.BatchNorm2d(out_channels),
+            nn.Conv3d(out_channels, out_channels, kernel_size=3, padding=1, dtype=dtype),
+            nn.BatchNorm3d(out_channels),
             nn.ReLU(inplace=True)
         )
 
@@ -39,7 +39,7 @@ class Down(nn.Module):
     def __init__(self, in_channels, out_channels, dtype=torch.float32):
         super().__init__()
         self.maxpool_conv = nn.Sequential(
-            nn.MaxPool2d(2),
+            nn.MaxPool3d(2),
             DoubleConv(in_channels, out_channels, dtype=dtype)
         )
 
@@ -59,7 +59,7 @@ class Up(nn.Module):
         if bilinear:
             self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
         else:
-            self.up = nn.ConvTranspose2d(in_channels // 2, in_channels // 2, kernel_size=2, stride=2, dtype=dtype)
+            self.up = nn.ConvTranspose3d(in_channels // 2, in_channels // 2, kernel_size=2, stride=2, dtype=dtype)
 
         self.conv = DoubleConv(in_channels, out_channels, dtype=dtype)
 
@@ -81,7 +81,7 @@ class Up(nn.Module):
 class OutConv(nn.Module):
     def __init__(self, in_channels, out_channels, dtype=torch.float32):
         super(OutConv, self).__init__()
-        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=1, dtype=dtype)
+        self.conv = nn.Conv3d(in_channels, out_channels, kernel_size=1, dtype=dtype)
 
     def forward(self, x):
         return self.conv(x)

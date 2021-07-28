@@ -53,23 +53,24 @@ def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
 
     # create grid of images for tensorboard
     # 16 bit int image maximum really so use that range
-    #source_grid = torchvision.utils.make_grid(source, normalize=True, value_range=(0, 4095))
+    # Only showing the first of the batch as we have 3D images, so we are going with 2D slices
+    source_grid = torchvision.utils.make_grid(source[0], normalize=True, value_range=(0, 4095))
     # Pass output through a sigmnoid for single class prediction
     sigged = torch.sigmoid(result)
     gated = torch.gt(sigged, 0.5)
     final = gated.int()
-    #predict_grid = torchvision.utils.make_grid(final)
-    #target_grid = torchvision.utils.make_grid(target_asi)
+    predict_grid = torchvision.utils.make_grid(final[0])
+    target_grid = torchvision.utils.make_grid(target_asi[0])
 
     # show images
-    #matplotlib_imshow(source_grid.cpu())
-    #matplotlib_imshow(predict_grid.cpu())
-    #matplotlib_imshow(target_grid.cpu())
+    matplotlib_imshow(source_grid.cpu())
+    matplotlib_imshow(predict_grid.cpu())
+    matplotlib_imshow(target_grid.cpu())
 
     # write to tensorboard
-    #writer.add_image('test_source_images', source_grid, step)
-    #writer.add_image('test_predict_images', predict_grid, step)
-    #writer.add_image('test_target_images', target_grid, step)
+    writer.add_image('test_source_images', source_grid, step)
+    writer.add_image('test_predict_images', predict_grid, step)
+    writer.add_image('test_target_images', target_grid, step)
     writer.add_scalar('test loss', loss, step)
 
 
@@ -128,7 +129,7 @@ def save(args, model):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='PyTorch Shaper Train')
     parser.add_argument('--batch-size', type=int, default=2,
-                        metavar='N', help='input batch size for training (default: 2)')
+                        metavar='N', help='input batch size for training (default: 10)')
     parser.add_argument('--epochs', type=int, default=10, metavar='N',
                         help='number of epochs to train (default: 10)')
     parser.add_argument('--image-size', type=int, default=512, metavar='S',
