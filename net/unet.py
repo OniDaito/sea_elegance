@@ -98,7 +98,7 @@ class NetU(nn.Module):
     ''' U-Net code, similiar to the above. Taken from
     https://github.com/milesial/Pytorch-UNet/.'''
 
-    def __init__(self, dtype=torch.float32):
+    def __init__(self, dtype=torch.float16):
         super(NetU, self).__init__()
         self.n_channels = 1
         self.n_classes = 1
