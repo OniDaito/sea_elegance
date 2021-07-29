@@ -47,7 +47,8 @@ class WormDataset(Dataset):
 
         with fits.open(img_path) as w:
             hdul = w[0].data.byteswap().newbyteorder()
-            source_image = np.array(hdul).astype("int16")        
+            source_image = np.array(hdul).astype("int16")
+            print("SHape, ", source_image.shape)        
             source_image = np.expand_dims(source_image, axis=0)
             source_image = nd.interpolation.zoom(source_image, zoom=0.5)
             source_image = torch.tensor(source_image, dtype=torch.float32, device = self.device)
