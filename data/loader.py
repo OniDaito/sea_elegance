@@ -48,7 +48,7 @@ class WormDataset(Dataset):
         with fits.open(img_path) as w:
             hdul = w[0].data.byteswap().newbyteorder()
             source_image = np.array(hdul).astype("int16")
-            source_image = nd.interpolation.zoom(source_image, zoom=0.5)
+            #source_image = nd.interpolation.zoom(source_image, zoom=0.5)
             source_image = np.expand_dims(source_image, axis=0)
             source_image = torch.tensor(source_image, dtype=torch.float16, device = self.device)
 
@@ -57,7 +57,7 @@ class WormDataset(Dataset):
         with fits.open(img_path) as w:
             hdul = w[0].data.byteswap().newbyteorder()
             target_asi = np.array(hdul).astype("int8")
-            target_asi = nd.interpolation.zoom(target_asi, zoom=0.5)
+            #target_asi = nd.interpolation.zoom(target_asi, zoom=0.5)
             target_asi = np.expand_dims(target_asi, axis=0)
             target_asi = torch.tensor(target_asi, dtype=torch.float16, device = self.device)
    
@@ -66,7 +66,7 @@ class WormDataset(Dataset):
         with fits.open(img_path) as w:
             hdul = w[0].data.byteswap().newbyteorder()
             target_asj = np.array(hdul).astype("int8")
-            target_asj = nd.interpolation.zoom(target_asj, zoom=0.5)
+            #target_asj = nd.interpolation.zoom(target_asj, zoom=0.5)
             target_asj = np.expand_dims(target_asj, axis=0)
             target_asj = torch.tensor(target_asj, dtype=torch.float16, device = self.device)
 
