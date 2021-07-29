@@ -50,14 +50,14 @@ class Down(nn.Module):
 class Up(nn.Module):
     """Upscaling then double conv"""
 
-    def __init__(self, in_channels, out_channels, bilinear=True, dtype=torch.float32):
+    def __init__(self, in_channels, out_channels, trilinear=True, dtype=torch.float32):
         super().__init__()
 
         # Potentially replace upsample
         # https://pytorch.org/docs/stable/generated/torch.nn.functional.upsample.html?highlight=upsample#torch.nn.functional.upsample
         # if bilinear, use the normal convolutions to reduce the number of channels
-        if bilinear:
-            self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
+        if trilinear:
+            self.up = nn.Upsample(scale_factor=2, mode='trilinear', align_corners=True)
         else:
             self.up = nn.ConvTranspose3d(in_channels // 2, in_channels // 2, kernel_size=2, stride=2, dtype=dtype)
 
