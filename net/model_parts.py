@@ -21,10 +21,10 @@ class DoubleConv(nn.Module):
     def __init__(self, in_channels, out_channels, dtype=torch.float32):
         super().__init__()
         self.double_conv = nn.Sequential(
-            nn.Conv3d(in_channels, out_channels, kernel_size=5, padding=1, dtype=dtype),
+            nn.Conv3d(in_channels, out_channels, kernel_size=3, padding=1, dtype=dtype),
             nn.BatchNorm3d(out_channels),
             nn.ReLU(inplace=True),
-            nn.Conv3d(out_channels, out_channels, kernel_size=5, padding=1, dtype=dtype),
+            nn.Conv3d(out_channels, out_channels, kernel_size=3, padding=1, dtype=dtype),
             nn.BatchNorm3d(out_channels),
             nn.ReLU(inplace=True)
         )
@@ -70,13 +70,15 @@ class Up(nn.Module):
         diffY = x2.size()[3] - x1.size()[3]
         diffX = x2.size()[4] - x1.size()[4]
 
+        print("shapes", x1.shape, x2.shape)
+
         x1 = F.pad(x1, [diffZ // 2, diffZ - diffZ // 2,
                         diffX // 2, diffX - diffX // 2,
                         diffY // 2, diffY - diffY // 2])
         # if you have padding issues, see
         # https://github.com/HaiyongJiang/U-Net-Pytorch-Unstructured-Buggy/commit/0e854509c2cea854e247a9c615f175f76fbb2e3a
         # https://github.com/xiaopeng-liao/Pytorch-UNet/commit/8ebac70e633bac59fc22bb5195e513d5832fb3bd
-        print("shapes", x1.shape, x2.shape)
+        print("shapes2", x1.shape, x2.shape)
         x = torch.cat([x2, x1], dim=1)
         return self.conv(x)
 
