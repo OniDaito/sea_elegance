@@ -54,24 +54,23 @@ def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
     # create grid of images for tensorboard
     # 16 bit int image maximum really so use that range
     # Only showing the first of the batch as we have 3D images, so we are going with 2D slices
-    source_grid = torchvision.utils.make_grid(source[0], normalize=True, value_range=(0, 4095))
+    #source_grid = torchvision.utils.make_grid(source[0], normalize=True, value_range=(0, 4095))
     # Pass output through a sigmnoid for single class prediction
-    sigged = torch.sigmoid(result)
-    gated = torch.gt(sigged, 0.5)
-    final = gated.int()
-    predict_grid = torchvision.utils.make_grid(final[0])
-    target_grid = torchvision.utils.make_grid(target_asi[0])
+    #sigged = torch.sigmoid(result)
+    #gated = torch.gt(sigged, 0.5)
+    #final = gated.int()
+    #predict_grid = torchvision.utils.make_grid(final[0])
+    #target_grid = torchvision.utils.make_grid(target_asi[0])
 
     # show images
-    matplotlib_imshow(source_grid.cpu())
-    matplotlib_imshow(predict_grid.cpu())
-    matplotlib_imshow(target_grid.cpu())
+    #matplotlib_imshow(source_grid.cpu())
+    #matplotlib_imshow(predict_grid.cpu())
+    #matplotlib_imshow(target_grid.cpu())
 
     # write to tensorboard
-    print("test", source_grid.shape)
-    writer.add_image('test_source_images', source_grid, step)
-    writer.add_image('test_predict_images', predict_grid, step)
-    writer.add_image('test_target_images', target_grid, step)
+    #writer.add_image('test_source_images', source_grid, step)
+    #writer.add_image('test_predict_images', predict_grid, step)
+    #writer.add_image('test_target_images', target_grid, step)
     writer.add_scalar('test loss', loss, step)
 
 
