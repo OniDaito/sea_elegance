@@ -21,10 +21,10 @@ class DoubleConv(nn.Module):
     def __init__(self, in_channels, out_channels, dtype=torch.float32):
         super().__init__()
         self.double_conv = nn.Sequential(
-            nn.Conv3d(in_channels, out_channels, kernel_size=3, padding=1, dtype=dtype),
+            nn.Conv3d(in_channels, out_channels, kernel_size=5, padding=1, dtype=dtype),
             nn.BatchNorm3d(out_channels),
             nn.ReLU(inplace=True),
-            nn.Conv3d(out_channels, out_channels, kernel_size=3, padding=1, dtype=dtype),
+            nn.Conv3d(out_channels, out_channels, kernel_size=5, padding=1, dtype=dtype),
             nn.BatchNorm3d(out_channels),
             nn.ReLU(inplace=True)
         )
