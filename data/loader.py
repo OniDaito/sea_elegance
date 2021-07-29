@@ -16,6 +16,7 @@ import numpy as np
 from torch.utils.data import Dataset
 from PIL import Image
 from astropy.io import fits
+from scipy import ndimage as nd
 
 def strip(text):
     try:
@@ -65,7 +66,12 @@ class WormDataset(Dataset):
             target_asj = np.array(hdul).astype("int8")
             target_asj = np.expand_dims(target_asj, axis=0)
             target_asj = torch.tensor(target_asj, dtype=torch.float32, device = self.device)
-    
+
+        # Scale all images to half size in all dimensions
+        target_asj = nd.interpolation.zoom(target_asj, zoom=0.5)
+        target_asi = nd.interpolation.zoom(target_asj, zoom=0.5)
+        source_image = nd.interpolation.zoom(target_asj, zoom=0.5)
+
         if self.transform:
             source_image = self.transform(source_image)
 
