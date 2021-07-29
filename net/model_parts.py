@@ -72,9 +72,10 @@ class Up(nn.Module):
 
         print("shapes", x1.shape, x2.shape)
 
-        x1 = F.pad(x1, [diffZ // 2, diffZ - diffZ // 2,
+        x1 = F.pad(x1, [
                         diffX // 2, diffX - diffX // 2,
-                        diffY // 2, diffY - diffY // 2])
+                        diffY // 2, diffY - diffY // 2,
+                        diffZ // 2, diffZ - diffZ // 2])
         # if you have padding issues, see
         # https://github.com/HaiyongJiang/U-Net-Pytorch-Unstructured-Buggy/commit/0e854509c2cea854e247a9c615f175f76fbb2e3a
         # https://github.com/xiaopeng-liao/Pytorch-UNet/commit/8ebac70e633bac59fc22bb5195e513d5832fb3bd
