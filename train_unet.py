@@ -56,7 +56,6 @@ def reduce_image(image, top=True) -> np.ndarray:
 def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
     model.eval()
     source, target_asi, _ = next(iter(test_data))
-    print("target shape", target_asi.shape)
     result = model.forward(source)
     loss = loss_func(result, target_asi)
     print('Test Step: {}.\tLoss: {:.6f}'.format(step, loss))
@@ -64,8 +63,8 @@ def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
     # create grid of images for tensorboard
     # 16 bit int image maximum really so use that range
     # Only showing the first of the batch as we have 3D images, so we are going with 2D slices
-    source_grid = torchvision.utils.make_grid(reduce_image(source), normalize=True, value_range=(0, 4095))
-    source_grid_side = torchvision.utils.make_grid(reduce_image(source, False), normalize=True, value_range=(0, 4095))
+    source_grid = torchvision.utils.make_grid([reduce_image(source), reduce_image(source, False)], normalize=True, value_range=(0, 4095))
+    #source_grid_side = torchvision.utils.make_grid(reduce_image(source, False), normalize=True, value_range=(0, 4095))
     # Pass output through a sigmnoid for single class prediction
     sigged = torch.sigmoid(result)
     gated = torch.gt(sigged, 0.5)
@@ -81,7 +80,7 @@ def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
 
     # show images
     matplotlib_imshow(source_grid.cpu())
-    matplotlib_imshow(source_grid_side.cpu())
+    #matplotlib_imshow(source_grid_side.cpu())
     matplotlib_imshow(predict_grid.cpu())
     matplotlib_imshow(predict_grid_side.cpu())
     matplotlib_imshow(target_grid.cpu())
