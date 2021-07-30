@@ -58,3 +58,15 @@ class Data(unittest.TestCase):
             source_image = nd.interpolation.zoom(source_image, zoom=0.5)
             c = plt.imshow(source_image[13])
             plt.show()
+
+    def reduce(self):
+        img_path = "./test/images/asi.fits"
+        with fits.open(img_path) as w:
+            hdul = w[0].data.byteswap().newbyteorder()
+            source_image = np.array(hdul).astype("int8")
+            reduced = np.max(image.cpu().numpy().astype(float), axis=3)
+            c = plt.imshow(reduced)
+            plt.show()
+
+    return 
+   
