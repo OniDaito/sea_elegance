@@ -48,7 +48,7 @@ def loss_func(result, target) -> torch.Tensor:
 
 
 def reduce_image(image) -> torch.Tensor:
-    return torch.mean(image, [1])
+    return torch.sum(image, [1])
 
 
 def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
@@ -61,7 +61,7 @@ def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
     # create grid of images for tensorboard
     # 16 bit int image maximum really so use that range
     # Only showing the first of the batch as we have 3D images, so we are going with 2D slices
-    source_grid = torchvision.utils.make_grid(reduce_image(source), normalize=True, value_range=(0, 4095))
+    source_grid = torchvision.utils.make_grid(reduce_image(source), normalize=True, value_range=(0, 4095 * 21))
     # Pass output through a sigmnoid for single class prediction
     sigged = torch.sigmoid(result)
     gated = torch.gt(sigged, 0.5)
