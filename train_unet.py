@@ -67,30 +67,15 @@ def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
     gated = torch.gt(sigged, 0.5)
     final = gated.int()
     final = reduce_image(final)
-    #target_asi_side = reduce_image(target_asi.squeeze(), 1)
-    #final_side = reduce_image(final, 3)
-    #predict_grid = torchvision.utils.make_grid(final)
-    #target_grid = torchvision.utils.make_grid(target_asi)
-    #predict_grid_side = torchvision.utils.make_grid(final_side)
-    #target_grid_side = torchvision.utils.make_grid(target_asi_side)
-
-    # show images
-    reduced = reduce_image(source[0])
-    matplotlib_imshow(reduced)
-    #matplotlib_imshow(source_grid_side.cpu())
-    #matplotlib_imshow(predict_grid.cpu())
-    #matplotlib_imshow(predict_grid_side.cpu())
-    #matplotlib_imshow(target_grid.cpu())
-    #matplotlib_imshow(target_grid_side.cpu())
 
     # write to tensorboard
-    new_source = reduce_image(source[0])
-    writer.add_image('test_source_image', new_source, step)
-    #writer.add_image('test_source_images_side', source_grid_side, step)
-    #writer.add_image('test_predict_images', predict_grid, step)
-    writer.add_image('test_predict_images_side', reduce_image(target_asi[0], 2), step)
-    #riter.add_image('test_target_images', target_grid, step)
-    #writer.add_image('test_target_images_side', target_grid_side, step)
+    writer.add_image('test_source_image', reduce_image(source[0]), step)
+    writer.add_image('test_source_image_side', reduce_image(source[0], 2), step)
+    writer.add_image('test_target_image', reduce_image(target_asi[0]), step)
+    writer.add_image('test_target_image_side', reduce_image(target_asi[0], 2), step)
+    writer.add_image('test_predict_image', reduce_image(final[0]), step)
+    writer.add_image('test_predict_image_side', reduce_image(final[0], 2), step)
+
     writer.add_scalar('test loss', loss, step)
 
 
