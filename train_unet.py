@@ -41,8 +41,6 @@ def matplotlib_imshow(img_grid):
 
 def loss_func(result, target) -> torch.Tensor:
     # return F.l1_loss(result, target, reduction="sum")
-    print("result", result != result)
-    print("target", target != target)
     criterion = nn.BCEWithLogitsLoss()
     return criterion(result, target)
 
