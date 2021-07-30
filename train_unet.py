@@ -47,6 +47,10 @@ def loss_func(result, target) -> torch.Tensor:
     return criterion(result, target)
 
 
+def reduce_image(image) -> torch.Tensor:
+    return torch.mean(image, [1])
+
+
 def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
     model.eval()
     source, target_asi, _ = next(iter(test_data))
@@ -57,50 +61,52 @@ def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
     # create grid of images for tensorboard
     # 16 bit int image maximum really so use that range
     # Only showing the first of the batch as we have 3D images, so we are going with 2D slices
-    #source_grid = torchvision.utils.make_grid(source[0], normalize=True, value_range=(0, 4095))
+    source_grid = torchvision.utils.make_grid(reduce_image(source), normalize=True, value_range=(0, 4095))
     # Pass output through a sigmnoid for single class prediction
-    #sigged = torch.sigmoid(result)
-    #gated = torch.gt(sigged, 0.5)
-    #final = gated.int()
-    #predict_grid = torchvision.utils.make_grid(final[0])
-    #target_grid = torchvision.utils.make_grid(target_asi[0])
+    sigged = torch.sigmoid(result)
+    gated = torch.gt(sigged, 0.5)
+    final = gated.int()
+    target_asi = reduce_image(target_asi)
+    final = reduce_image*(final)
+    predict_grid = torchvision.utils.make_grid(final)
+    target_grid = torchvision.utils.make_grid(target_asi)
 
     # show images
-    #matplotlib_imshow(source_grid.cpu())
-    #matplotlib_imshow(predict_grid.cpu())
-    #matplotlib_imshow(target_grid.cpu())
+    matplotlib_imshow(source_grid.cpu())
+    matplotlib_imshow(predict_grid.cpu())
+    matplotlib_imshow(target_grid.cpu())
 
     # write to tensorboard
-    #writer.add_image('test_source_images', source_grid, step)
-    #writer.add_image('test_predict_images', predict_grid, step)
-    #writer.add_image('test_target_images', target_grid, step)
+    writer.add_image('test_source_images', source_grid, step)
+    writer.add_image('test_predict_images', predict_grid, step)
+    writer.add_image('test_target_images', target_grid, step)
     writer.add_scalar('test loss', loss, step)
 
 
 def train(args, model, train_data: DataLoader, test_data: DataLoader, optimiser, writer: SummaryWriter):
     model.train()
 
-    with GuruMeditation():
-        for epoch in range(args.epochs):
-            for batch_idx, (source, target_asi, _) in enumerate(train_data):
-                optimiser.zero_grad()
-                result = model(source)
-                loss = loss_func(result, target_asi)
-                loss.backward()
-                # Nicked from U-net example - not sure why
-                nn.utils.clip_grad_value_(model.parameters(), 0.1)
-                optimiser.step()
-                step = epoch * len(train_data) + (batch_idx * args.batch_size)
-                writer.add_scalar('training loss', loss, step)
-                print(
-                    'Train Epoch / Step: {} {}.\tLoss: {:.6f}'.format(epoch, batch_idx, loss))
+    for epoch in range(args.epochs):
+        for batch_idx, (source, target_asi, _) in enumerate(train_data):
+            optimiser.zero_grad()
+            result = model(source)
+            loss = loss_func(result, target_asi)
+            loss.backward()
+            # Nicked from U-net example - not sure why
+            nn.utils.clip_grad_value_(model.parameters(), 0.1)
+            optimiser.step()
+            step = epoch * len(train_data) + (batch_idx * args.batch_size)
+            writer.add_scalar('training loss', loss, step)
+            print(
+                'Train Epoch / Step: {} {}.\tLoss: {:.6f}'.format(epoch, batch_idx, loss))
 
-                # We save here because we want our first step to be untrained
-                # network
-                if batch_idx % args.log_interval == 0:
-                    save(args, model)
-                    test(args, model, test_data, step, writer)
-                    model.train()
+            # We save here because we want our first step to be untrained
+            # network
+            if batch_idx % args.log_interval == 0:
+                save(args, model)
+                test(args, model, test_data, step, writer)
+                model.train()
+
 
 def load_data(args, device) -> Tuple[DataLoader]:
     # Do we need device? Moving the data onto the device for speed?
