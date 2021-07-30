@@ -75,9 +75,7 @@ def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
     #target_grid_side = torchvision.utils.make_grid(target_asi_side)
 
     # show images
-    print("source shape", source.shape)
     reduced = reduce_image(source[0])
-    print("reduced shape", reduced.shape)
     matplotlib_imshow(reduced)
     #matplotlib_imshow(source_grid_side.cpu())
     #matplotlib_imshow(predict_grid.cpu())
