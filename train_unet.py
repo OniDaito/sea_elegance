@@ -77,7 +77,9 @@ def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
 
     # show images
     print("source shape", source.shape)
-    matplotlib_imshow(reduce_image(source[0]))
+    reduced = reduce_image(source[0])
+    print("reduced shape", reduced.shape)
+    matplotlib_imshow(reduced)
     #matplotlib_imshow(source_grid_side.cpu())
     #matplotlib_imshow(predict_grid.cpu())
     #matplotlib_imshow(predict_grid_side.cpu())
