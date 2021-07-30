@@ -47,7 +47,7 @@ def loss_func(result, target) -> torch.Tensor:
     return criterion(result, target)
 
 
-def reduce_image(image, axis=2) -> np.ndarray:
+def reduce_image(image, axis=1) -> np.ndarray:
     return np.max(image.cpu().numpy().astype(float), axis=axis)
 
 def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
@@ -66,7 +66,6 @@ def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
     sigged = torch.sigmoid(result)
     gated = torch.gt(sigged, 0.5)
     final = gated.int()
-    target_asi = reduce_image(target_asi)
     final = reduce_image(final)
     #target_asi_side = reduce_image(target_asi.squeeze(), 1)
     #final_side = reduce_image(final, 3)
@@ -90,7 +89,7 @@ def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
     writer.add_image('test_source_image', reduce_image(source[0]), step)
     #writer.add_image('test_source_images_side', source_grid_side, step)
     #writer.add_image('test_predict_images', predict_grid, step)
-    #writer.add_image('test_predict_images_side', predict_grid_side, step)
+    writer.add_image('test_predict_images_side', reduce_image(target_asi[0], 2), step)
     #riter.add_image('test_target_images', target_grid, step)
     #writer.add_image('test_target_images_side', target_grid_side, step)
     writer.add_scalar('test loss', loss, step)
