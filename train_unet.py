@@ -41,6 +41,8 @@ def matplotlib_imshow(img_grid):
 
 def loss_func(result, target) -> torch.Tensor:
     # return F.l1_loss(result, target, reduction="sum")
+    print("result", result != result)
+    print("target", target != target)
     criterion = nn.BCEWithLogitsLoss()
     return criterion(result, target)
 
@@ -78,27 +80,26 @@ def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
 def train(args, model, train_data: DataLoader, test_data: DataLoader, optimiser, writer: SummaryWriter):
     model.train()
 
-    with autograd.detect_anomaly():
-        for epoch in range(args.epochs):
-            for batch_idx, (source, target_asi, _) in enumerate(train_data):
-                optimiser.zero_grad()
-                result = model(source)
-                loss = loss_func(result, target_asi)
-                loss.backward()
-                # Nicked from U-net example - not sure why
-                nn.utils.clip_grad_value_(model.parameters(), 0.1)
-                optimiser.step()
-                step = epoch * len(train_data) + (batch_idx * args.batch_size)
-                writer.add_scalar('training loss', loss, step)
-                print(
-                    'Train Epoch / Step: {} {}.\tLoss: {:.6f}'.format(epoch, batch_idx, loss))
+    for epoch in range(args.epochs):
+        for batch_idx, (source, target_asi, _) in enumerate(train_data):
+            optimiser.zero_grad()
+            result = model(source)
+            loss = loss_func(result, target_asi)
+            loss.backward()
+            # Nicked from U-net example - not sure why
+            nn.utils.clip_grad_value_(model.parameters(), 0.1)
+            optimiser.step()
+            step = epoch * len(train_data) + (batch_idx * args.batch_size)
+            writer.add_scalar('training loss', loss, step)
+            print(
+                'Train Epoch / Step: {} {}.\tLoss: {:.6f}'.format(epoch, batch_idx, loss))
 
-                # We save here because we want our first step to be untrained
-                # network
-                if batch_idx % args.log_interval == 0:
-                    save(args, model)
-                    test(args, model, test_data, step, writer)
-                    model.train()
+            # We save here because we want our first step to be untrained
+            # network
+            if batch_idx % args.log_interval == 0:
+                save(args, model)
+                test(args, model, test_data, step, writer)
+                model.train()
 
 
 def load_data(args, device) -> Tuple[DataLoader]:

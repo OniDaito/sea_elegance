@@ -50,7 +50,7 @@ class Down(nn.Module):
 class Up(nn.Module):
     """Upscaling then double conv"""
 
-    def __init__(self, in_channels, out_channels, trilinear=False, dtype=torch.float16):
+    def __init__(self, in_channels, out_channels, trilinear=True, dtype=torch.float16):
         super().__init__()
 
         # Potentially replace upsample
