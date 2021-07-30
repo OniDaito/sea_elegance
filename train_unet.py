@@ -36,7 +36,7 @@ def binaryise(input_tensor: torch.Tensor) -> torch.Tensor:
 
 
 def matplotlib_imshow(img):
-    img *= (255.0/img.max())
+    img *= (1.0/img.max())
     img = image_boxes.astype("int8")
     plt.imshow(img, cmap='jet')
 
