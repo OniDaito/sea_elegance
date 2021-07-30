@@ -51,7 +51,7 @@ def reduce_image(image, top=True) -> np.ndarray:
     axis = 3
     if top:
         axis = 2
-    return torch.tensor(np.max(image.cpu().numpy().astype(np.float), axis=axis), dtype=torch.float32)
+    return torch.tensor(np.max(image.cpu().numpy().astype(float), axis=axis), dtype=torch.float32)
    
 
 
