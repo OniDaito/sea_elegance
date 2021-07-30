@@ -59,14 +59,11 @@ class Data(unittest.TestCase):
             c = plt.imshow(source_image[13])
             plt.show()
 
-    def reduce(self):
+    def test_reduce(self):
         img_path = "./test/images/asi.fits"
         with fits.open(img_path) as w:
             hdul = w[0].data.byteswap().newbyteorder()
             source_image = np.array(hdul).astype("int8")
-            reduced = np.max(image.cpu().numpy().astype(float), axis=3)
+            reduced = np.max(source_image.astype(float), axis=1)
             c = plt.imshow(reduced)
             plt.show()
-
-    return 
-   
