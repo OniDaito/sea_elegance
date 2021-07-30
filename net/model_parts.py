@@ -22,10 +22,10 @@ class DoubleConv(nn.Module):
         super().__init__()
         self.double_conv = nn.Sequential(
             nn.Conv3d(in_channels, out_channels, kernel_size=3, padding=1, dtype=dtype),
-            #nn.BatchNorm3d(out_channels),
+            nn.BatchNorm3d(out_channels),
             nn.LeakyReLU(inplace=True),
             nn.Conv3d(out_channels, out_channels, kernel_size=3, padding=1, dtype=dtype),
-            #nn.BatchNorm3d(out_channels),
+            nn.BatchNorm3d(out_channels),
             nn.LeakyReLU(inplace=True)
         )
 
@@ -44,7 +44,11 @@ class Down(nn.Module):
         )
 
     def forward(self, x):
-        return self.maxpool_conv(x)
+        # return self.maxpool_conv(x)
+        y = self.maxpool_conv(x)
+        print("Down", y != y)
+        return y
+
 
 
 class Up(nn.Module):
@@ -78,7 +82,10 @@ class Up(nn.Module):
         # https://github.com/HaiyongJiang/U-Net-Pytorch-Unstructured-Buggy/commit/0e854509c2cea854e247a9c615f175f76fbb2e3a
         # https://github.com/xiaopeng-liao/Pytorch-UNet/commit/8ebac70e633bac59fc22bb5195e513d5832fb3bd
         x = torch.cat([x2, x1], dim=1)
-        return self.conv(x)
+        y = self.conv(x)
+        print("Up", y != y)
+        #return self.conv(x)
+        return y
 
 
 class OutConv(nn.Module):
