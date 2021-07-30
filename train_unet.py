@@ -35,7 +35,7 @@ def binaryise(input_tensor: torch.Tensor) -> torch.Tensor:
 
 
 def matplotlib_imshow(img_grid):
-    npimg = img_grid[0].numpy()
+    npimg = img_grid[0]
     #npimg *= (255.0/npimg.max())
     #npimg = npimg.astype("int8")
     plt.imshow(npimg, cmap='jet')
