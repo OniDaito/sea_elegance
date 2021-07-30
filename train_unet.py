@@ -50,7 +50,7 @@ def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
     source, target_asi, _ = next(iter(test_data))
     result = model.forward(source)
     with torch.no_grad():
-        result.clamp_(min=1e-4)
+        result.clamp_(min=1e-2)
     loss = loss_func(result, target_asi)
     print('Test Step: {}.\tLoss: {:.6f}'.format(step, loss))
 
@@ -84,6 +84,8 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader, optimiser,
         for batch_idx, (source, target_asi, _) in enumerate(train_data):
             optimiser.zero_grad()
             result = model(source)
+            with torch.no_grad():
+                result.clamp_(min=1e-2)
             loss = loss_func(result, target_asi)
             loss.backward()
             # Nicked from U-net example - not sure why
