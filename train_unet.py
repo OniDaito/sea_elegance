@@ -68,7 +68,7 @@ def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
     final = gated.int()
     target_asi = reduce_image(target_asi)
     final = reduce_image(final)
-    target_asi_side = reduce_image(target_asi.squeeze(), 2)
+    target_asi_side = reduce_image(target_asi.squeeze(), 1)
     final_side = reduce_image(final, 3)
     predict_grid = torchvision.utils.make_grid(final)
     target_grid = torchvision.utils.make_grid(target_asi)
