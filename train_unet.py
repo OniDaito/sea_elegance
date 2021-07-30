@@ -8,6 +8,7 @@ Author : Benjamin Blundell - k1803390@kcl.ac.uk
 train_unet.py - train our u-net model - our main entry point.
 
 """
+from net.guru import GuruMeditation
 import torch
 import argparse
 import torch.nn as nn
@@ -22,7 +23,7 @@ import matplotlib.pyplot as plt
 import torchvision
 from torch.utils.tensorboard import SummaryWriter
 from torch import autograd
-
+from . import guru
 
 def binaryise(input_tensor: torch.Tensor) -> torch.Tensor:
     ''' Convert the tensors so we don't have different numbers. If its
@@ -78,27 +79,27 @@ def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
 def train(args, model, train_data: DataLoader, test_data: DataLoader, optimiser, writer: SummaryWriter):
     model.train()
 
-    for epoch in range(args.epochs):
-        for batch_idx, (source, target_asi, _) in enumerate(train_data):
-            optimiser.zero_grad()
-            result = model(source)
-            loss = loss_func(result, target_asi)
-            print("loss", loss, loss != loss)
-            loss.backward()
-            # Nicked from U-net example - not sure why
-            #nn.utils.clip_grad_value_(model.parameters(), 0.1)
-            optimiser.step()
-            step = epoch * len(train_data) + (batch_idx * args.batch_size)
-            writer.add_scalar('training loss', loss, step)
-            print(
-                'Train Epoch / Step: {} {}.\tLoss: {:.6f}'.format(epoch, batch_idx, loss))
+    with GuruMeditation():
+        for epoch in range(args.epochs):
+            for batch_idx, (source, target_asi, _) in enumerate(train_data):
+                optimiser.zero_grad()
+                result = model(source)
+                loss = loss_func(result, target_asi)
+                loss.backward()
+                # Nicked from U-net example - not sure why
+                nn.utils.clip_grad_value_(model.parameters(), 0.1)
+                optimiser.step()
+                step = epoch * len(train_data) + (batch_idx * args.batch_size)
+                writer.add_scalar('training loss', loss, step)
+                print(
+                    'Train Epoch / Step: {} {}.\tLoss: {:.6f}'.format(epoch, batch_idx, loss))
 
-            # We save here because we want our first step to be untrained
-            # network
-            if batch_idx % args.log_interval == 0:
-                save(args, model)
-                test(args, model, test_data, step, writer)
-                model.train()
+                # We save here because we want our first step to be untrained
+                # network
+                if batch_idx % args.log_interval == 0:
+                    save(args, model)
+                    test(args, model, test_data, step, writer)
+                    model.train()
 
 
 def load_data(args, device) -> Tuple[DataLoader]:
