@@ -44,11 +44,7 @@ class Down(nn.Module):
         )
 
     def forward(self, x):
-        # return self.maxpool_conv(x)
-        y = self.maxpool_conv(x)
-        print("Down", y != y)
-        return y
-
+        return self.maxpool_conv(x)
 
 
 class Up(nn.Module):
@@ -82,10 +78,7 @@ class Up(nn.Module):
         # https://github.com/HaiyongJiang/U-Net-Pytorch-Unstructured-Buggy/commit/0e854509c2cea854e247a9c615f175f76fbb2e3a
         # https://github.com/xiaopeng-liao/Pytorch-UNet/commit/8ebac70e633bac59fc22bb5195e513d5832fb3bd
         x = torch.cat([x2, x1], dim=1)
-        y = self.conv(x)
-        print("Up", y != y)
-        #return self.conv(x)
-        return y
+        return self.conv(x)
 
 
 class OutConv(nn.Module):
