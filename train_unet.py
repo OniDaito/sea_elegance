@@ -76,7 +76,7 @@ def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
     #target_grid_side = torchvision.utils.make_grid(target_asi_side)
 
     # show images
-    matplotlib_imshow(reduce_image(source)[0])
+    matplotlib_imshow(reduce_image(source[0]))
     #matplotlib_imshow(source_grid_side.cpu())
     #matplotlib_imshow(predict_grid.cpu())
     #matplotlib_imshow(predict_grid_side.cpu())
@@ -84,7 +84,7 @@ def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
     #matplotlib_imshow(target_grid_side.cpu())
 
     # write to tensorboard
-    writer.add_image('test_source_image', reduce_image(source)[0], step)
+    writer.add_image('test_source_image', reduce_image(source[0]), step)
     #writer.add_image('test_source_images_side', source_grid_side, step)
     #writer.add_image('test_predict_images', predict_grid, step)
     #writer.add_image('test_predict_images_side', predict_grid_side, step)
