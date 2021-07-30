@@ -69,7 +69,7 @@ def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
     final = gated.int()
 
     # write to tensorboard
-    writer.add_image('test_source_image', reduce_image(source[0]), step)
+    writer.add_image('test_source_image', reduce_image(source[0]) / 4096, step)
     writer.add_image('test_source_image_side', reduce_image(source[0], 2), step)
     writer.add_image('test_target_image', reduce_image(target_asi[0]), step)
     writer.add_image('test_target_image_side', reduce_image(target_asi[0], 2), step)
