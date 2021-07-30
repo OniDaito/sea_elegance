@@ -17,6 +17,10 @@ from data.loader import WormDataset
 from torch.utils.data import DataLoader
 from torchvision.transforms import ToTensor
 import matplotlib.pyplot as plt
+import numpy as np
+from astropy.io import fits
+from scipy import ndimage as nd
+
 
 
 class Data(unittest.TestCase):
@@ -45,3 +49,12 @@ class Data(unittest.TestCase):
         axarr[1].imshow(train_asi[0].squeeze().numpy())
         axarr[2].imshow(train_asj[0].squeeze().numpy())
         plt.show()
+
+    def test_scale(self):
+        img_path = "./test/images/raw.fits"
+        with fits.open(img_path) as w:
+            hdul = w[0].data.byteswap().newbyteorder()
+            source_image = np.array(hdul).astype("int16")
+            source_image = nd.interpolation.zoom(source_image, zoom=0.5)
+            c = plt.imshow(source_image[13])
+            plt.show()
