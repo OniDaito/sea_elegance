@@ -47,8 +47,8 @@ def loss_func(result, target) -> torch.Tensor:
     return criterion(result, target)
 
 
-def reduce_image(image, axis=2) -> np.ndarray:
-    return torch.tensor(np.max(image.cpu().numpy().astype(float), axis=axis), dtype=torch.float32)
+def reduce_image(image, axis=1) -> np.ndarray:
+    return np.max(image.squeeze().cpu().numpy().astype(float), axis=axis)
 
 def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
     model.eval()
@@ -60,36 +60,36 @@ def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
     # create grid of images for tensorboard
     # 16 bit int image maximum really so use that range
     # Only showing the first of the batch as we have 3D images, so we are going with 2D slices
-    source_grid = torchvision.utils.make_grid(reduce_image(source), normalize=True, value_range=(0, 4095))
-    source_grid_side = torchvision.utils.make_grid(reduce_image(source, 3), normalize=True, value_range=(0, 4095))
+    #source_grid = torchvision.utils.make_grid(reduce_image(source), normalize=True, value_range=(0, 4095))
+    #source_grid_side = torchvision.utils.make_grid(reduce_image(source, 3), normalize=True, value_range=(0, 4095))
     # Pass output through a sigmnoid for single class prediction
     sigged = torch.sigmoid(result)
     gated = torch.gt(sigged, 0.5)
     final = gated.int()
     target_asi = reduce_image(target_asi)
     final = reduce_image(final)
-    target_asi_side = reduce_image(target_asi.squeeze(), 1)
-    final_side = reduce_image(final, 3)
-    predict_grid = torchvision.utils.make_grid(final)
-    target_grid = torchvision.utils.make_grid(target_asi)
-    predict_grid_side = torchvision.utils.make_grid(final_side)
-    target_grid_side = torchvision.utils.make_grid(target_asi_side)
+    #target_asi_side = reduce_image(target_asi.squeeze(), 1)
+    #final_side = reduce_image(final, 3)
+    #predict_grid = torchvision.utils.make_grid(final)
+    #target_grid = torchvision.utils.make_grid(target_asi)
+    #predict_grid_side = torchvision.utils.make_grid(final_side)
+    #target_grid_side = torchvision.utils.make_grid(target_asi_side)
 
     # show images
-    matplotlib_imshow(source_grid.cpu())
-    matplotlib_imshow(source_grid_side.cpu())
-    matplotlib_imshow(predict_grid.cpu())
-    matplotlib_imshow(predict_grid_side.cpu())
-    matplotlib_imshow(target_grid.cpu())
-    matplotlib_imshow(target_grid_side.cpu())
+    matplotlib_imshow(reduce_image[0])
+    #matplotlib_imshow(source_grid_side.cpu())
+    #matplotlib_imshow(predict_grid.cpu())
+    #matplotlib_imshow(predict_grid_side.cpu())
+    #matplotlib_imshow(target_grid.cpu())
+    #matplotlib_imshow(target_grid_side.cpu())
 
     # write to tensorboard
-    writer.add_image('test_source_images', source_grid, step)
-    writer.add_image('test_source_images_side', source_grid_side, step)
-    writer.add_image('test_predict_images', predict_grid, step)
-    writer.add_image('test_predict_images_side', predict_grid_side, step)
-    writer.add_image('test_target_images', target_grid, step)
-    writer.add_image('test_target_images_side', target_grid_side, step)
+    writer.add_image('test_source_image', reduce_image[0], step)
+    #writer.add_image('test_source_images_side', source_grid_side, step)
+    #writer.add_image('test_predict_images', predict_grid, step)
+    #writer.add_image('test_predict_images_side', predict_grid_side, step)
+    #riter.add_image('test_target_images', target_grid, step)
+    #writer.add_image('test_target_images_side', target_grid_side, step)
     writer.add_scalar('test loss', loss, step)
 
 
@@ -130,8 +130,8 @@ def load_data(args, device) -> Tuple[DataLoader]:
     assert(dsize <= len(worm_data))
     train_dataset, test_dataset, _ = torch.utils.data.random_split(
         worm_data, [args.train_size, args.test_size, len(worm_data) - dsize])
-    train_dataloader = DataLoader(train_dataset, batch_size=3, shuffle=True)
-    test_dataloader = DataLoader(test_dataset, batch_size=3, shuffle=True)
+    train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+    test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=True)
     return (train_dataloader, test_dataloader)
 
 
