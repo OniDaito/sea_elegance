@@ -66,7 +66,6 @@ def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
     sigged = torch.sigmoid(result)
     gated = torch.gt(sigged, 0.5)
     final = gated.int()
-    final = reduce_image(final)
 
     # write to tensorboard
     writer.add_image('test_source_image', reduce_image(source[0]), step)
