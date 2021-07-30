@@ -23,6 +23,8 @@ import matplotlib.pyplot as plt
 import torchvision
 from torch.utils.tensorboard import SummaryWriter
 from torch import autograd
+import pdb
+
 
 def binaryise(input_tensor: torch.Tensor) -> torch.Tensor:
     ''' Convert the tensors so we don't have different numbers. If its
@@ -84,6 +86,8 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader, optimiser,
                 optimiser.zero_grad()
                 result = model(source)
                 loss = loss_func(result, target_asi)
+                pdb.set_trace()
+
                 loss.backward()
                 # Nicked from U-net example - not sure why
                 nn.utils.clip_grad_value_(model.parameters(), 0.1)
