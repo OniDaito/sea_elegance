@@ -21,6 +21,7 @@ from net.unet import NetU
 import matplotlib.pyplot as plt
 import torchvision
 from torch.utils.tensorboard import SummaryWriter
+from torch import autograd
 
 
 def binaryise(input_tensor: torch.Tensor) -> torch.Tensor:
