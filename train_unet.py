@@ -95,10 +95,10 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader, optimiser,
 
                 # We save here because we want our first step to be untrained
                 # network
-                if batch_idx % args.log_interval == 0:
-                    save(args, model)
-                    test(args, model, test_data, step, writer)
-                    model.train()
+                #if batch_idx % args.log_interval == 0:
+                #    save(args, model)
+                #    test(args, model, test_data, step, writer)
+                #    model.train()
 
 
 def load_data(args, device) -> Tuple[DataLoader]:
