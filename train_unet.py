@@ -36,8 +36,8 @@ def binaryise(input_tensor: torch.Tensor) -> torch.Tensor:
 
 def matplotlib_imshow(img_grid):
     npimg = img_grid[0]
-    #npimg *= (255.0/npimg.max())
-    #npimg = npimg.astype("int8")
+    npimg *= (255.0/npimg.max())
+    npimg = npimg.astype("int8")
     plt.imshow(npimg, cmap='jet')
 
 
@@ -87,7 +87,6 @@ def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
 
     # write to tensorboard
     new_source = reduce_image(source[0])
-    new_source /= np.max(np.abs(new_source), axis=0)
     writer.add_image('test_source_image', new_source, step)
     #writer.add_image('test_source_images_side', source_grid_side, step)
     #writer.add_image('test_predict_images', predict_grid, step)
