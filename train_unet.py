@@ -41,8 +41,7 @@ def matplotlib_imshow(img_grid):
 
 def loss_func(result, target) -> torch.Tensor:
     # return F.l1_loss(result, target, reduction="sum")
-    #criterion = nn.BCEWithLogitsLoss()
-    criterion = nn.L1Loss()
+    criterion = nn.BCEWithLogitsLoss()
     return criterion(result, target)
 
 
@@ -87,7 +86,7 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader, optimiser,
             print("loss", loss, loss != loss)
             loss.backward()
             # Nicked from U-net example - not sure why
-            nn.utils.clip_grad_value_(model.parameters(), 0.1)
+            #nn.utils.clip_grad_value_(model.parameters(), 0.1)
             optimiser.step()
             step = epoch * len(train_data) + (batch_idx * args.batch_size)
             writer.add_scalar('training loss', loss, step)
