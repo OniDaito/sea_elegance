@@ -86,7 +86,9 @@ def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
     #matplotlib_imshow(target_grid_side.cpu())
 
     # write to tensorboard
-    writer.add_image('test_source_image', reduce_image(source[0]), step)
+    new_source = reduce_image(source[0])
+    new_source /= np.max(np.abs(new_source), axis=0)
+    writer.add_image('test_source_image', new_source, step)
     #writer.add_image('test_source_images_side', source_grid_side, step)
     #writer.add_image('test_predict_images', predict_grid, step)
     writer.add_image('test_predict_images_side', reduce_image(target_asi[0], 2), step)
