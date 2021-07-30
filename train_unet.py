@@ -56,6 +56,7 @@ def reduce_image(image, top=True) -> np.ndarray:
 def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
     model.eval()
     source, target_asi, _ = next(iter(test_data))
+    print("target shape", target_asi.shape)
     result = model.forward(source)
     loss = loss_func(result, target_asi)
     print('Test Step: {}.\tLoss: {:.6f}'.format(step, loss))
