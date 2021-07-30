@@ -49,6 +49,8 @@ def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
     model.eval()
     source, target_asi, _ = next(iter(test_data))
     result = model.forward(source)
+    with torch.no_grad():
+        result.clamp_(min=1e-4)
     loss = loss_func(result, target_asi)
     print('Test Step: {}.\tLoss: {:.6f}'.format(step, loss))
 
