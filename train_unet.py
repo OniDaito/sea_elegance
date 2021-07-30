@@ -8,6 +8,7 @@ Author : Benjamin Blundell - k1803390@kcl.ac.uk
 train_unet.py - train our u-net model - our main entry point.
 
 """
+from torch.utils.tensorboard.summary import image_boxes
 from net.guru import GuruMeditation
 import torch
 import argparse
@@ -34,11 +35,10 @@ def binaryise(input_tensor: torch.Tensor) -> torch.Tensor:
     return res
 
 
-def matplotlib_imshow(img_grid):
-    npimg = img_grid[0]
-    npimg *= (255.0/npimg.max())
-    npimg = npimg.astype("int8")
-    plt.imshow(npimg, cmap='jet')
+def matplotlib_imshow(img):
+    img *= (255.0/img.max())
+    img = image_boxes.astype("int8")
+    plt.imshow(img, cmap='jet')
 
 
 def loss_func(result, target) -> torch.Tensor:
@@ -49,6 +49,7 @@ def loss_func(result, target) -> torch.Tensor:
 
 def reduce_image(image, axis=1) -> np.ndarray:
     return np.max(image.cpu().numpy().astype(float), axis=axis)
+
 
 def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
     model.eval()
@@ -74,7 +75,6 @@ def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
     writer.add_image('test_target_image_side', reduce_image(target_asi[0], 2), step)
     writer.add_image('test_predict_image', reduce_image(final[0]), step)
     writer.add_image('test_predict_image_side', reduce_image(final[0], 2), step)
-
     writer.add_scalar('test loss', loss, step)
 
 
