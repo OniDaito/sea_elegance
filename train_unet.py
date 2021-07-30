@@ -48,7 +48,7 @@ def loss_func(result, target) -> torch.Tensor:
 
 
 def reduce_image(image) -> torch.Tensor:
-    return torch.max(image, [1])
+    return torch.max(image, 1)
 
 
 def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
