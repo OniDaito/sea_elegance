@@ -47,13 +47,8 @@ def loss_func(result, target) -> torch.Tensor:
     return criterion(result, target)
 
 
-def reduce_image(image, top=True) -> np.ndarray:
-    axis = 3
-    if top:
-        axis = 2
+def reduce_image(image, axis=2) -> np.ndarray:
     return torch.tensor(np.max(image.cpu().numpy().astype(float), axis=axis), dtype=torch.float32)
-   
-
 
 def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
     model.eval()
@@ -66,15 +61,15 @@ def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
     # 16 bit int image maximum really so use that range
     # Only showing the first of the batch as we have 3D images, so we are going with 2D slices
     source_grid = torchvision.utils.make_grid(reduce_image(source), normalize=True, value_range=(0, 4095))
-    source_grid_side = torchvision.utils.make_grid(reduce_image(source, False), normalize=True, value_range=(0, 4095))
+    source_grid_side = torchvision.utils.make_grid(reduce_image(source, 3), normalize=True, value_range=(0, 4095))
     # Pass output through a sigmnoid for single class prediction
     sigged = torch.sigmoid(result)
     gated = torch.gt(sigged, 0.5)
     final = gated.int()
     target_asi = reduce_image(target_asi)
     final = reduce_image(final)
-    target_asi_side = reduce_image(target_asi.squeeze(), False)
-    final_side = reduce_image(final, False)
+    target_asi_side = reduce_image(target_asi.squeeze(), 2)
+    final_side = reduce_image(final, 3)
     predict_grid = torchvision.utils.make_grid(final)
     target_grid = torchvision.utils.make_grid(target_asi)
     predict_grid_side = torchvision.utils.make_grid(final_side)
