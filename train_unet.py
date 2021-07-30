@@ -23,7 +23,6 @@ import matplotlib.pyplot as plt
 import torchvision
 from torch.utils.tensorboard import SummaryWriter
 from torch import autograd
-from . import guru
 
 def binaryise(input_tensor: torch.Tensor) -> torch.Tensor:
     ''' Convert the tensors so we don't have different numbers. If its
