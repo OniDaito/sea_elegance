@@ -49,7 +49,8 @@ class WormDataset(Dataset):
             hdul = w[0].data.byteswap().newbyteorder()
             source_image = np.array(hdul).astype("int16")
             source_image = nd.interpolation.zoom(source_image, zoom=0.5)
-            source_image = source_image.astype(np.float16) / 4095
+            source_image = source_image.astype(float) / 4095.0
+            source_image = source_image.astype(np.float16)
             source_image = np.expand_dims(source_image, axis=0)
             # Divide by the maximum possible in order to normalise the input. Should help with
             # exploding gradients and optimisation.
