@@ -111,6 +111,8 @@ class NetU(nn.Module):
         self.down4 = mp.Down(512, 512, dtype=dtype)
         self.up1 = mp.Up(1024, 256, self.bilinear, dtype=dtype)
         self.up2 = mp.Up(512, 128, self.bilinear, dtype=dtype)
+        self.up2b = mp.Up(768, 128, self.bilinear, dtype=dtype)
+
         self.up3 = mp.Up(256, 64, self.bilinear, dtype=dtype)
         self.up4 = mp.Up(128, 64, self.bilinear, dtype=dtype)
         self.outc = mp.OutConv(64, self.n_classes, dtype=dtype)
@@ -122,7 +124,7 @@ class NetU(nn.Module):
         x4 = self.down3(x3)
         #x5 = self.down4(x4)
         #x = self.up1(x5, x4)
-        x = self.up2(x4, x3)
+        x = self.up2b(x4, x3)
         x = self.up3(x, x2)
         x = self.up4(x, x1)
         out = self.outc(x)
