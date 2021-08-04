@@ -85,9 +85,8 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader, optimiser,
             optimiser.zero_grad()
             result = model(source)
             loss = loss_func(result, target_asi)
-            with torch.no_grad():
-                loss.clamp_(min=1e-2)
             loss.backward()
+            print(loss.grad)
             # Nicked from U-net example - not sure why
             nn.utils.clip_grad_value_(model.parameters(), 0.1)
             optimiser.step()
