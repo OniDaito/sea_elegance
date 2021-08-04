@@ -63,7 +63,7 @@ class WormDataset(Dataset):
             target_asi = np.array(hdul).astype("int8")
             target_asi = nd.interpolation.zoom(target_asi, zoom=0.5)
             target_asi = np.expand_dims(target_asi, axis=0)
-            target_asi = torch.tensor(target_asi, dtype=torch.float16, device = self.device)
+            target_asi = torch.tensor(target_asi.astype(np.float16), dtype=torch.float16, device = self.device)
    
         img_path = os.path.join(self.img_dir, self.img_targets.iloc[idx, 2])
         
@@ -72,7 +72,7 @@ class WormDataset(Dataset):
             target_asj = np.array(hdul).astype("int8")
             target_asj = nd.interpolation.zoom(target_asj, zoom=0.5)
             target_asj = np.expand_dims(target_asj, axis=0)
-            target_asj = torch.tensor(target_asj, dtype=torch.float16, device = self.device)
+            target_asj = torch.tensor(target_asj.astype(np.float16), dtype=torch.float16, device = self.device)
 
         if self.transform:
             source_image = self.transform(source_image)
