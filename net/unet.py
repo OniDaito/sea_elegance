@@ -75,7 +75,7 @@ class NetEncDec(nn.Module):
         x = F.leaky_relu(self.batch1(self.conv1(target)))
         x = F.leaky_relu(self.batch2(self.conv2(x)))
         x = F.leaky_relu(self.batch3(self.conv3(x)))
-        x = F.leaky_relu(self.batch4(self.conv4(x)))
+        #x = F.leaky_relu(self.batch4(self.conv4(x)))
         #x = F.leaky_relu(self.batch5(self.conv5(x)))
         #x = F.leaky_relu(self.batch6(self.conv6(x)))
 
@@ -86,7 +86,7 @@ class NetEncDec(nn.Module):
 
         #x = F.leaky_relu(self.deconv1(x))
         #x = F.leaky_relu(self.deconv2(x))
-        x = F.leaky_relu(self.deconv3(x))
+        #x = F.leaky_relu(self.deconv3(x))
         x = F.leaky_relu(self.deconv4(x))
         x = F.leaky_relu(self.deconv5(x))
         x = F.leaky_relu(self.deconv6(x))
@@ -120,8 +120,8 @@ class NetU(nn.Module):
         x2 = self.down1(x1)
         x3 = self.down2(x2)
         x4 = self.down3(x3)
-        x5 = self.down4(x4)
-        x = self.up1(x5, x4)
+        #x5 = self.down4(x4)
+        #x = self.up1(x5, x4)
         x = self.up2(x, x3)
         x = self.up3(x, x2)
         x = self.up4(x, x1)
