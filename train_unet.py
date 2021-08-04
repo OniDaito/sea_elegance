@@ -85,10 +85,7 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader, optimiser,
             optimiser.zero_grad()
             result = model(source)
             loss = loss_func(result, target_asi)
-            print(loss)
-            loss.retain_grad()
             loss.backward()
-            print(loss.grad)
             # Nicked from U-net example - not sure why
             #nn.utils.clip_grad_value_(model.parameters(), 0.1)
             optimiser.step()
@@ -171,8 +168,8 @@ if __name__ == "__main__":
     train_data, test_data = load_data(args, device)
     model = create_model(args, device)
     # Adam optimiser results in NaNs which is a real shame
-    #optimiser = optim.Adam(model.parameters(), lr=args.lr, weight_decay=1e-5)
-    optimiser = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=0.9)
+    optimiser = optim.Adam(model.parameters(), lr=args.lr, weight_decay=1e-5, eps=1e-3)
+    #optimiser = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=0.9)
     #optimiser = optim.Rprop(model.parameters(), lr=args.lr)
 
     # Start Tensorboard
