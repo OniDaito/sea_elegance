@@ -90,7 +90,7 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader, optimiser,
             loss.backward()
             print(loss.grad)
             # Nicked from U-net example - not sure why
-            nn.utils.clip_grad_value_(model.parameters(), 0.1)
+            #nn.utils.clip_grad_value_(model.parameters(), 0.1)
             optimiser.step()
             step = epoch * len(train_data) + (batch_idx * args.batch_size)
             writer.add_scalar('training loss', loss, step)
