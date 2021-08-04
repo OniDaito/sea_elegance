@@ -171,7 +171,7 @@ if __name__ == "__main__":
     # Adam optimiser results in NaNs which is a real shame
     #optimiser = optim.Adam(variables, lr=args.lr)
     #optimiser = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=0.9)
-    optimiser = optim.AdamW(model.parameters(), lr=args.lr)
+    optimiser = optim.Adamax(model.parameters(), lr=args.lr)
 
 
     # Start Tensorboard
