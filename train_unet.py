@@ -167,9 +167,8 @@ if __name__ == "__main__":
     # Create all the things we need
     train_data, test_data = load_data(args, device)
     model = create_model(args, device)
-    variables = list(model.parameters())
     # Adam optimiser results in NaNs which is a real shame
-    optimiser = optim.Adam(variables, lr=args.lr)
+    optimiser = optim.Adam(model.parameters(), lr=args.lr)
     #optimiser = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=0.9)
     #optimiser = optim.Rprop(model.parameters(), lr=args.lr)
 
