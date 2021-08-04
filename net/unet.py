@@ -37,12 +37,12 @@ class NetEncDec(nn.Module):
     def __init__(self):
         super(NetEncDec, self).__init__()
         # Batch norm layers
-        self.batch1 = nn.BatchNorm2d(16)
-        self.batch2 = nn.BatchNorm2d(32)
-        self.batch3 = nn.BatchNorm2d(64)
-        self.batch4 = nn.BatchNorm2d(128)
-        self.batch5 = nn.BatchNorm2d(256)
-        self.batch6 = nn.BatchNorm2d(256)
+        self.batch1 = nn.BatchNorm3d(16)
+        self.batch2 = nn.BatchNorm3d(32)
+        self.batch3 = nn.BatchNorm3d(64)
+        self.batch4 = nn.BatchNorm3d(128)
+        self.batch5 = nn.BatchNorm3d(256)
+        self.batch6 = nn.BatchNorm3d(256)
 
         # Conv layers
         # Added more conf layers as we aren't using maxpooling
