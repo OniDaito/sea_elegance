@@ -50,11 +50,11 @@ class WormDataset(Dataset):
             source_image = np.array(hdul).astype("int16")
             source_image = nd.interpolation.zoom(source_image, zoom=0.5)
             source_image = source_image.astype(float) / 4095.0
-            source_image = source_image.astype(np.float32)
+            source_image = source_image.astype(np.float16)
             source_image = np.expand_dims(source_image, axis=0)
             # Divide by the maximum possible in order to normalise the input. Should help with
             # exploding gradients and optimisation.
-            source_image = torch.tensor(source_image, dtype=torch.float32, device = self.device)
+            source_image = torch.tensor(source_image, dtype=torch.float16, device=self.device)
 
         img_path = os.path.join(self.img_dir, self.img_targets.iloc[idx, 1])
 
@@ -63,7 +63,7 @@ class WormDataset(Dataset):
             target_asi = np.array(hdul).astype("int8")
             target_asi = nd.interpolation.zoom(target_asi, zoom=0.5)
             target_asi = np.expand_dims(target_asi, axis=0)
-            target_asi = torch.tensor(target_asi.astype(np.float32), dtype=torch.float32, device = self.device)
+            target_asi = torch.tensor(target_asi.astype(np.float16), dtype=torch.float16, device=self.device)
    
         img_path = os.path.join(self.img_dir, self.img_targets.iloc[idx, 2])
         
@@ -72,7 +72,7 @@ class WormDataset(Dataset):
             target_asj = np.array(hdul).astype("int8")
             target_asj = nd.interpolation.zoom(target_asj, zoom=0.5)
             target_asj = np.expand_dims(target_asj, axis=0)
-            target_asj = torch.tensor(target_asj.astype(np.float32), dtype=torch.float32, device = self.device)
+            target_asj = torch.tensor(target_asj.astype(np.float16), dtype=torch.float16, device=self.device)
 
         if self.transform:
             source_image = self.transform(source_image)

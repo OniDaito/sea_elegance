@@ -86,7 +86,7 @@ class NetEncDec(nn.Module):
 
         #x = F.leaky_relu(self.deconv1(x))
         #x = F.leaky_relu(self.deconv2(x))
-        #x = F.leaky_relu(self.deconv3(x))
+        x = F.leaky_relu(self.deconv3(x))
         x = F.leaky_relu(self.deconv4(x))
         x = F.leaky_relu(self.deconv5(x))
         x = F.leaky_relu(self.deconv6(x))
@@ -98,7 +98,7 @@ class NetU(nn.Module):
     ''' U-Net code, similiar to the above. Taken from
     https://github.com/milesial/Pytorch-UNet/.'''
 
-    def __init__(self, dtype=torch.float32):
+    def __init__(self, dtype=torch.float16):
         super(NetU, self).__init__()
         self.n_channels = 1
         self.n_classes = 1
@@ -111,8 +111,6 @@ class NetU(nn.Module):
         self.down4 = mp.Down(512, 512, dtype=dtype)
         self.up1 = mp.Up(1024, 256, self.bilinear, dtype=dtype)
         self.up2 = mp.Up(512, 128, self.bilinear, dtype=dtype)
-        self.up2b = mp.Up(768, 128, self.bilinear, dtype=dtype)
-
         self.up3 = mp.Up(256, 64, self.bilinear, dtype=dtype)
         self.up4 = mp.Up(128, 64, self.bilinear, dtype=dtype)
         self.outc = mp.OutConv(64, self.n_classes, dtype=dtype)
@@ -122,9 +120,9 @@ class NetU(nn.Module):
         x2 = self.down1(x1)
         x3 = self.down2(x2)
         x4 = self.down3(x3)
-        #x5 = self.down4(x4)
-        #x = self.up1(x5, x4)
-        x = self.up2b(x4, x3)
+        x5 = self.down4(x4)
+        x = self.up1(x5, x4)
+        x = self.up2(x, x3)
         x = self.up3(x, x2)
         x = self.up4(x, x1)
         out = self.outc(x)
