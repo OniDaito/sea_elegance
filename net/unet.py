@@ -51,10 +51,10 @@ class NetEncDec(nn.Module):
         self.conv3 = nn.Conv3d(32, 64, 5, stride=2, padding=1)
         self.conv4 = nn.Conv3d(64, 128, 5, stride=2, padding=1)
         self.conv5 = nn.Conv3d(128, 256, 5, stride=2, padding=1)
-        self.conv6 = nn.Conv3d(256, 256, 5, stride=2, padding=1)
+        #self.conv6 = nn.Conv3d(256, 256, 5, stride=2, padding=1)
         self.fc1 = nn.Linear(16384, 512)  # seems like a lot :/
 
-        self.deconv1 = nn.ConvTranspose3d(256, 256, 5, stride=2, padding=1)
+        #self.deconv1 = nn.ConvTranspose3d(256, 256, 5, stride=2, padding=1)
         self.deconv2 = nn.ConvTranspose3d(256, 128, 5, stride=2, padding=1)
         self.deconv3 = nn.ConvTranspose3d(128, 64, 5, stride=2, padding=1)
         self.deconv4 = nn.ConvTranspose3d(64, 32, 5, stride=2, padding=1)
@@ -77,14 +77,14 @@ class NetEncDec(nn.Module):
         x = F.leaky_relu(self.batch3(self.conv3(x)))
         x = F.leaky_relu(self.batch4(self.conv4(x)))
         x = F.leaky_relu(self.batch5(self.conv5(x)))
-        x = F.leaky_relu(self.batch6(self.conv6(x)))
+        #x = F.leaky_relu(self.batch6(self.conv6(x)))
 
-        #ff = num_flat_features(x)
-        #x = x.view(-1, ff)
-        #x = F.leaky_relu(self.fc1(x))
-        #x = x.view(-1, 128, 2, 2)
+        ff = num_flat_features(x)
+        x = x.view(-1, ff)
+        x = F.leaky_relu(self.fc1(x))
+        x = x.view(-1, 128, 2, 2)
 
-        x = F.leaky_relu(self.deconv1(x))
+        #x = F.leaky_relu(self.deconv1(x))
         x = F.leaky_relu(self.deconv2(x))
         x = F.leaky_relu(self.deconv3(x))
         x = F.leaky_relu(self.deconv4(x))
