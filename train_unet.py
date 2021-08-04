@@ -171,8 +171,8 @@ if __name__ == "__main__":
     train_data, test_data = load_data(args, device)
     model = create_model(args, device)
     # Adam optimiser results in NaNs which is a real shame
-    optimiser = optim.Adam(model.parameters(), lr=args.lr, weight_decay=1e-5)
-    #optimiser = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=0.9)
+    #optimiser = optim.Adam(model.parameters(), lr=args.lr, weight_decay=1e-5)
+    optimiser = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=0.9)
     #optimiser = optim.Rprop(model.parameters(), lr=args.lr)
 
     # Start Tensorboard
