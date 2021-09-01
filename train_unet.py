@@ -31,6 +31,7 @@ def matplotlib_imshow(img):
     img = image_boxes.astype("int8")
     plt.imshow(img, cmap='jet')
 
+
 def binaryise(input_tensor: torch.Tensor) -> torch.Tensor:
     ''' Convert the tensors so we don't have different numbers. If its
     not a zero, it's a 1.'''
@@ -38,10 +39,12 @@ def binaryise(input_tensor: torch.Tensor) -> torch.Tensor:
     res[input_tensor != 0] = 1
     return res
 
+
 def loss_func(result, target) -> torch.Tensor:
     # return F.l1_loss(result, target, reduction="sum")
     criterion = nn.BCEWithLogitsLoss()
-    return criterion(result, target)
+    dense = target.cpu().dense().to(result.device)
+    return criterion(result, dense)
 
 
 def reduce_image(image, axis=1) -> np.ndarray:
@@ -51,7 +54,6 @@ def reduce_image(image, axis=1) -> np.ndarray:
 def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
     model.eval()
     source, target_asi, _ = next(iter(test_data))
-    #target_asi = target_asi.to_dense()
     result = model.forward(source)
     loss = loss_func(result, target_asi)
     print('Test Step: {}.\tLoss: {:.6f}'.format(step, loss))
@@ -81,7 +83,6 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader, optimiser,
 
     for epoch in range(args.epochs):
         for batch_idx, (source, target_asi, _) in enumerate(train_data):
-            #target_asi = target_asi.to_dense().to(model.device)
             optimiser.zero_grad()
             result = model(source)
             loss = loss_func(result, target_asi)
