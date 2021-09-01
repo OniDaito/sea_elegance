@@ -35,19 +35,22 @@ class Data(unittest.TestCase):
 
         train_source, train_asi, train_asj = next(iter(dataloader))
         print(f"Feature batch shape: {train_source.size()}")
-        print(f"Labels batch shape: {train_source.size()}")
+        print(f"Labels batch shape: {train_asi.size()}")
         print("Data type", train_source.dtype)
      
-        #print("value", train_source[0][0][114][517])
-        self.assertTrue(train_asi[0][0][121][501] == 1)
-        self.assertTrue(train_source[0][0][112][512] == 1467)
-        self.assertTrue(train_source[0][0][114][517] == 1612)
+        #tt = train_asi.to_dense()
+        #self.assertTrue(tt[0][0][10][60][290] == 0)
+        #tt = train_source.to_dense()
+        #val = float(tt[0][0][13][76][228])
+        #self.assertTrue(math.fabs(val - 0.0005) < 0.0001)
 
-        plt.figure()
         f, axarr = plt.subplots(3, 1)
-        axarr[0].imshow(train_source[0].squeeze().numpy())
-        axarr[1].imshow(train_asi[0].squeeze().numpy())
-        axarr[2].imshow(train_asj[0].squeeze().numpy())
+        train_source = np.sum(train_source[0].squeeze().numpy(), axis=0)
+        axarr[0].imshow(train_source)
+        train_asi = np.sum(train_asi.to_dense()[0].squeeze().numpy(), axis=0)
+        axarr[1].imshow(train_asi)
+        train_asj = np.sum(train_asj.to_dense()[0].squeeze().numpy(), axis=0)
+        axarr[2].imshow(train_asj)
         plt.show()
 
     def test_scale(self):

@@ -27,14 +27,6 @@ from torch import autograd
 import pdb
 
 
-def binaryise(input_tensor: torch.Tensor) -> torch.Tensor:
-    ''' Convert the tensors so we don't have different numbers. If its
-    not a zero, it's a 1.'''
-    res = input_tensor.clone()
-    res[input_tensor != 0] = 1
-    return res
-
-
 def matplotlib_imshow(img):
     img = image_boxes.astype("int8")
     plt.imshow(img, cmap='jet')
@@ -53,6 +45,7 @@ def reduce_image(image, axis=1) -> np.ndarray:
 def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
     model.eval()
     source, target_asi, _ = next(iter(test_data))
+    target_asi = target_asi.to_dense()
     result = model.forward(source)
     loss = loss_func(result, target_asi)
     print('Test Step: {}.\tLoss: {:.6f}'.format(step, loss))
@@ -82,6 +75,7 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader, optimiser,
 
     for epoch in range(args.epochs):
         for batch_idx, (source, target_asi, _) in enumerate(train_data):
+            target_asi = target_asi.to_dense()
             optimiser.zero_grad()
             result = model(source)
             loss = loss_func(result, target_asi)
@@ -106,7 +100,6 @@ def load_data(args, device) -> Tuple[DataLoader]:
     # Do we need device? Moving the data onto the device for speed?
     worm_data = WormDataset(annotations_file=args.image_path + "/dataset.csv",
                             img_dir=args.image_path,
-                            target_transform=binaryise,
                             device=device)
     print("Length of Worm Dataset", len(worm_data))
    

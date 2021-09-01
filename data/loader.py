@@ -19,6 +19,7 @@ from PIL import Image
 from astropy.io import fits
 from scipy import ndimage as nd
 
+
 def strip(text):
     try:
         return text.strip()
@@ -26,18 +27,30 @@ def strip(text):
         return text
 
 
-def make_sparse(input_data: np.ndarray, device):
+def binaryise(input_data: np.ndarray) -> np.ndarray:
+    ''' Convert the tensors so we don't have different numbers. If its
+    not a zero, it's a 1.'''
+    res = input_data.copy()
+    res[input_data != 0] = 1
+    return res
+
+
+def make_sparse(input_data: np.ndarray, dtype, device):
     indices = []
     data = []
+    
+    for b in range(input_data.shape[0]):
+        for z in range(input_data.shape[1]):
+            for y in range(input_data.shape[2]):
+                for x in range(input_data.shape[3]):
+                    if input_data[b][z][y][x] != 0:
+                        indices.append([b, z, y, x])
+                        data.append(input_data[b][z][y][x])
 
-    for z in input_data.shape[0]:
-        for y in input_data.shape[1]:
-            for x in input_data.shape[2]:
-                if input_data[z][y][x] != 0:
-                    indices.append([z, x, y])
-                    data.append(input_data[z][y][x])
+    s = torch.sparse_coo_tensor(list(zip(*indices)), data, torch.Size(input_data.shape))
+    s.to(dtype)
+    s.to(device)
 
-    s = torch.sparse_coo_tensor(indices, data, input_data.shape, dtype=torch.float16, device=device)
     return s
 
 
@@ -66,11 +79,11 @@ class WormDataset(Dataset):
             source_image = np.array(hdul).astype("int16")
             source_image = nd.interpolation.zoom(source_image, zoom=0.5)
             source_image = source_image.astype(float) / 4095.0
-            source_image = source_image.astype(np.float16)
+            source_image = source_image.astype(np.float32)
             source_image = np.expand_dims(source_image, axis=0)
             # Divide by the maximum possible in order to normalise the input. Should help with
             # exploding gradients and optimisation.
-            source_image = make_sparse(source_image, device=device)
+            source_image = torch.tensor(source_image, dtype=torch.float32, device=self.device)
 
         img_path = os.path.join(self.img_dir, self.img_targets.iloc[idx, 1])
 
@@ -78,8 +91,9 @@ class WormDataset(Dataset):
             hdul = w[0].data.byteswap().newbyteorder()
             target_asi = np.array(hdul).astype("int8")
             target_asi = nd.interpolation.zoom(target_asi, zoom=0.5)
+            target_asi = binaryise(target_asi)
             target_asi = np.expand_dims(target_asi, axis=0)
-            target_asi = make_sparse(target_asi, device=device)
+            target_asi = make_sparse(target_asi, torch.int8, self.device)
    
         img_path = os.path.join(self.img_dir, self.img_targets.iloc[idx, 2])
         
@@ -87,8 +101,9 @@ class WormDataset(Dataset):
             hdul = w[0].data.byteswap().newbyteorder()
             target_asj = np.array(hdul).astype("int8")
             target_asj = nd.interpolation.zoom(target_asj, zoom=0.5)
+            target_asj = binaryise(target_asj)
             target_asj = np.expand_dims(target_asj, axis=0)
-            target_asj = make_sparse(target_asj, device=device)
+            target_asj = make_sparse(target_asj, torch.int8, self.device)
 
         if self.transform:
             source_image = self.transform(source_image)
