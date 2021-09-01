@@ -47,7 +47,7 @@ def make_sparse(input_data: np.ndarray, dtype, device):
                         indices.append([b, z, y, x])
                         data.append(input_data[b][z][y][x])
 
-    print("SHAPES", indices.shape, data.shape)
+    print("SHAPES", indices, data.shape)
     s = torch.sparse_coo_tensor(list(zip(*indices)), data, torch.Size(input_data.shape))
     s.to(dtype)
     s.to(device)
