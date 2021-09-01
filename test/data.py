@@ -36,7 +36,7 @@ class Data(unittest.TestCase):
         train_source, train_asi, train_asj = next(iter(dataloader))
         print(f"Feature batch shape: {train_source.size()}")
         print(f"Labels batch shape: {train_asi.size()}")
-        print("Data type", train_source.dtype)
+        print("Source Data type", train_source.dtype)
      
         #tt = train_asi.to_dense()
         #self.assertTrue(tt[0][0][10][60][290] == 0)
