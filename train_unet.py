@@ -116,8 +116,8 @@ def load_data(args, device) -> Tuple[DataLoader]:
     assert(dsize <= len(worm_data))
     train_dataset, test_dataset, _ = torch.utils.data.random_split(
         worm_data, [args.train_size, args.test_size, len(worm_data) - dsize])
-    train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
-    test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=True)
+    train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, device=device, shuffle=True)
+    test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, device=device, shuffle=True)
     return (train_dataloader, test_dataloader)
 
 
