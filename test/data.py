@@ -45,11 +45,11 @@ class Data(unittest.TestCase):
         #self.assertTrue(math.fabs(val - 0.0005) < 0.0001)
 
         f, axarr = plt.subplots(3, 1)
-        train_source = np.sum(train_source[0].squeeze().numpy(), axis=0)
+        train_source = np.sum(train_source[0].squeeze().numpy().astype(float), axis=0)
         axarr[0].imshow(train_source)
-        train_asi = np.sum(train_asi.to_dense()[0].squeeze().numpy(), axis=0)
+        train_asi = np.sum(train_asi.to_dense()[0].squeeze().numpy().astype(float), axis=0)
         axarr[1].imshow(train_asi)
-        train_asj = np.sum(train_asj.to_dense()[0].squeeze().numpy(), axis=0)
+        train_asj = np.sum(train_asj.to_dense()[0].squeeze().numpy().astype(float), axis=0)
         axarr[2].imshow(train_asj)
         plt.show()
 

@@ -18,7 +18,7 @@ import torch.nn.functional as F
 class DoubleConv(nn.Module):
     """(convolution => [BN] => ReLU) * 2"""
 
-    def __init__(self, in_channels, out_channels, dtype=torch.float32):
+    def __init__(self, in_channels, out_channels, dtype=torch.float16):
         super().__init__()
         self.double_conv = nn.Sequential(
             nn.Conv3d(in_channels, out_channels, kernel_size=3, padding=1, dtype=dtype),
@@ -36,7 +36,7 @@ class DoubleConv(nn.Module):
 class Down(nn.Module):
     """Downscaling with maxpool then double conv"""
 
-    def __init__(self, in_channels, out_channels, dtype=torch.float32):
+    def __init__(self, in_channels, out_channels, dtype=torch.float16):
         super().__init__()
         self.maxpool_conv = nn.Sequential(
             nn.MaxPool3d(2),
@@ -50,7 +50,7 @@ class Down(nn.Module):
 class Up(nn.Module):
     """Upscaling then double conv"""
 
-    def __init__(self, in_channels, out_channels, trilinear=True, dtype=torch.float32):
+    def __init__(self, in_channels, out_channels, trilinear=True, dtype=torch.float16):
         super().__init__()
 
         # Potentially replace upsample
@@ -82,7 +82,7 @@ class Up(nn.Module):
 
 
 class OutConv(nn.Module):
-    def __init__(self, in_channels, out_channels, dtype=torch.float32):
+    def __init__(self, in_channels, out_channels, dtype=torch.float16):
         super(OutConv, self).__init__()
         self.conv = nn.Conv3d(in_channels, out_channels, kernel_size=1, dtype=dtype)
 
