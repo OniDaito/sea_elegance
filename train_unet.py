@@ -43,7 +43,7 @@ def binaryise(input_tensor: torch.Tensor) -> torch.Tensor:
 def loss_func(result, target) -> torch.Tensor:
     # return F.l1_loss(result, target, reduction="sum")
     criterion = nn.BCEWithLogitsLoss()
-    dense = target.cpu().to_dense().to(result.device)
+    dense = target.to_dense().to(result.device)
     print(result.is_sparse, dense.is_sparse)
     return criterion(result, dense)
 
