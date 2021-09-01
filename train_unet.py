@@ -43,8 +43,8 @@ def binaryise(input_tensor: torch.Tensor) -> torch.Tensor:
 def loss_func(result, target) -> torch.Tensor:
     # return F.l1_loss(result, target, reduction="sum")
     criterion = nn.BCEWithLogitsLoss()
-    dense = target.cpu().dense().to(result.device)
-    return criterion(result, dense)
+    #dense = target.cpu().dense().to(result.device)
+    return criterion(result, target)
 
 
 def reduce_image(image, axis=1) -> np.ndarray:
