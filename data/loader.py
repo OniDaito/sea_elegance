@@ -35,7 +35,7 @@ def binaryise(input_data: np.ndarray) -> np.ndarray:
     return res
 
 
-def make_sparse(input_data: np.ndarray, dtype, device):
+def make_sparse(input_data: np.ndarray, device):
     indices = []
     data = []
     
@@ -48,7 +48,6 @@ def make_sparse(input_data: np.ndarray, dtype, device):
                         data.append(input_data[b][z][y][x])
 
     s = torch.sparse_coo_tensor(list(zip(*indices)), data, torch.Size(input_data.shape))
-    s.to(dtype)
     s.to(device)
     return s
 
@@ -91,8 +90,8 @@ class WormDataset(Dataset):
             target_asi = np.array(hdul).astype("int8")
             target_asi = nd.interpolation.zoom(target_asi, zoom=0.5)
             target_asi = binaryise(target_asi)
-            target_asi = np.expand_dims(target_asi, axis=0)
-            target_asi = make_sparse(target_asi, torch.float16, self.device)
+            target_asi = np.expand_dims(target_asi, axis=0).astype(np.float16)
+            target_asi = make_sparse(target_asi, self.device)
    
         img_path = os.path.join(self.img_dir, self.img_targets.iloc[idx, 2])
         
@@ -101,8 +100,8 @@ class WormDataset(Dataset):
             target_asj = np.array(hdul).astype("int8")
             target_asj = nd.interpolation.zoom(target_asj, zoom=0.5)
             target_asj = binaryise(target_asj)
-            target_asj = np.expand_dims(target_asj, axis=0)
-            target_asj = make_sparse(target_asj, torch.float16, self.device)
+            target_asj = np.expand_dims(target_asj, axis=0).astype(np.float16)
+            target_asj = make_sparse(target_asj, self.device)
 
         if self.transform:
             source_image = self.transform(source_image)
