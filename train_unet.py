@@ -75,7 +75,7 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader, optimiser,
 
     for epoch in range(args.epochs):
         for batch_idx, (source, target_asi, _) in enumerate(train_data):
-            #target_asi = target_asi.to_dense()
+            target_asi = target_asi.to_dense().to(model.device)
             optimiser.zero_grad()
             result = model(source)
             loss = loss_func(result, target_asi)
