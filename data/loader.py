@@ -13,6 +13,7 @@ import os
 import torch
 import pandas as pd
 import numpy as np
+from torch._C import device
 from torch.utils.data import Dataset
 from PIL import Image
 from astropy.io import fits
@@ -23,6 +24,21 @@ def strip(text):
         return text.strip()
     except AttributeError:
         return text
+
+
+def make_sparse(input_data: np.ndarray, device):
+    indices = []
+    data = []
+
+    for z in input_data.shape[0]:
+        for y in input_data.shape[1]:
+            for x in input_data.shape[2]:
+                if input_data[z][y][x] != 0:
+                    indices.append([z, x, y])
+                    data.append(input_data[z][y][x])
+
+    s = torch.sparse_coo_tensor(indices, data, input_data.shape, dtype=torch.float16, device=device)
+    return s
 
 
 class WormDataset(Dataset):
@@ -54,7 +70,7 @@ class WormDataset(Dataset):
             source_image = np.expand_dims(source_image, axis=0)
             # Divide by the maximum possible in order to normalise the input. Should help with
             # exploding gradients and optimisation.
-            source_image = torch.tensor(source_image, dtype=torch.float16, device=self.device)
+            source_image = make_sparse(source_image, device=device)
 
         img_path = os.path.join(self.img_dir, self.img_targets.iloc[idx, 1])
 
@@ -63,7 +79,7 @@ class WormDataset(Dataset):
             target_asi = np.array(hdul).astype("int8")
             target_asi = nd.interpolation.zoom(target_asi, zoom=0.5)
             target_asi = np.expand_dims(target_asi, axis=0)
-            target_asi = torch.tensor(target_asi.astype(np.float16), dtype=torch.float16, device=self.device)
+            target_asi = make_sparse(target_asi, device=device)
    
         img_path = os.path.join(self.img_dir, self.img_targets.iloc[idx, 2])
         
@@ -72,7 +88,7 @@ class WormDataset(Dataset):
             target_asj = np.array(hdul).astype("int8")
             target_asj = nd.interpolation.zoom(target_asj, zoom=0.5)
             target_asj = np.expand_dims(target_asj, axis=0)
-            target_asj = torch.tensor(target_asj.astype(np.float16), dtype=torch.float16, device=self.device)
+            target_asj = make_sparse(target_asj, device=device)
 
         if self.transform:
             source_image = self.transform(source_image)
