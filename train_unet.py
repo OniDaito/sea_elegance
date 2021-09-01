@@ -110,14 +110,14 @@ def load_data(args, device) -> Tuple[DataLoader]:
     worm_data = WormDataset(annotations_file=args.image_path + "/dataset.csv",
                             img_dir=args.image_path,
                             device=device)
-    print("Length of Worm Dataset", len(worm_data))
+    print("Length of Worm Dataset", len(worm_data), "on device", device)
    
     dsize = args.train_size + args.test_size + args.valid_size
     assert(dsize <= len(worm_data))
     train_dataset, test_dataset, _ = torch.utils.data.random_split(
         worm_data, [args.train_size, args.test_size, len(worm_data) - dsize])
-    train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, device=device, shuffle=True)
-    test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, device=device, shuffle=True)
+    train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+    test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=True)
     return (train_dataloader, test_dataloader)
 
 
