@@ -31,6 +31,12 @@ def matplotlib_imshow(img):
     img = image_boxes.astype("int8")
     plt.imshow(img, cmap='jet')
 
+def binaryise(input_tensor: torch.Tensor) -> torch.Tensor:
+    ''' Convert the tensors so we don't have different numbers. If its
+    not a zero, it's a 1.'''
+    res = input_tensor.clone()
+    res[input_tensor != 0] = 1
+    return res
 
 def loss_func(result, target) -> torch.Tensor:
     # return F.l1_loss(result, target, reduction="sum")
