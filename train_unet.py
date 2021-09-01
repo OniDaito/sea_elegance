@@ -86,6 +86,7 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader, optimiser,
         for batch_idx, (source, target_asi, _) in enumerate(train_data):
             optimiser.zero_grad()
             result = model(source)
+            print("devs", result.device, target_asi.device)
             loss = loss_func(result, target_asi)
             loss.backward()
             # Nicked from U-net example - not sure why
