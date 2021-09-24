@@ -108,7 +108,8 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader, optimiser,
 def load_data(args, device) -> Tuple[DataLoader]:
     # Do we need device? Moving the data onto the device for speed?
     worm_data = WormDataset(annotations_file=args.image_path + "/dataset.csv",
-                            img_dir=args.image_path)
+                            img_dir=args.image_path,
+                            device=device)
     #print("Length of Worm Dataset", len(worm_data), "on device", device)
    
     dsize = args.train_size + args.test_size + args.valid_size
