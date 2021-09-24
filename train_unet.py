@@ -44,7 +44,6 @@ def loss_func(result, target) -> torch.Tensor:
     # return F.l1_loss(result, target, reduction="sum")
     criterion = nn.BCEWithLogitsLoss()
     dense = target.to_dense().to(result.device)
-    print(result.is_sparse, dense.is_sparse)
     return criterion(result, dense)
 
 
@@ -56,6 +55,7 @@ def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
     model.eval()
     source, target_asi, _ = next(iter(test_data))
     result = model.forward(source)
+    target_asi = target_asi.to(result.device)
     loss = loss_func(result, target_asi)
     print('Test Step: {}.\tLoss: {:.6f}'.format(step, loss))
 
@@ -72,8 +72,8 @@ def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
     # write to tensorboard
     writer.add_image('test_source_image', reduce_image(source[0]), step)
     writer.add_image('test_source_image_side', reduce_image(source[0], 2), step)
-    writer.add_image('test_target_image', reduce_image(target_asi[0]), step)
-    writer.add_image('test_target_image_side', reduce_image(target_asi[0], 2), step)
+    writer.add_image('test_target_image', reduce_image(target_asi.to_dense()[0]), step)
+    writer.add_image('test_target_image_side', reduce_image(target_asi.to_dense()[0], 2), step)
     writer.add_image('test_predict_image', reduce_image(final[0]), step)
     writer.add_image('test_predict_image_side', reduce_image(final[0], 2), step)
     writer.add_scalar('test loss', loss, step)
@@ -86,7 +86,7 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader, optimiser,
         for batch_idx, (source, target_asi, _) in enumerate(train_data):
             optimiser.zero_grad()
             result = model(source)
-            print("devs", result.device, target_asi.device)
+            target_asi = target_asi.to(result.device)
             loss = loss_func(result, target_asi)
             loss.backward()
             # Nicked from U-net example - not sure why
