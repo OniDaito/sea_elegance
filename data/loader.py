@@ -54,10 +54,9 @@ def make_sparse(input_data: np.ndarray, device):
 
 class WormDataset(Dataset):
     def __init__(self, annotations_file, img_dir, transform=None, target_transform=None, device='cpu'):
-        self.img_targets = pd.read_csv(annotations_file, names=["source", "asi", "asj"],
+        self.img_targets = pd.read_csv(annotations_file, names=["source", "mask"],
                     converters = {'source' : strip,
-                                    'asi' : strip,
-                                    'asj' : strip})
+                                    'mask' : strip})
         self.img_dir = img_dir
         self.transform = transform
         self.target_transform = target_transform
@@ -86,28 +85,17 @@ class WormDataset(Dataset):
         img_path = os.path.join(self.img_dir, self.img_targets.iloc[idx, 1])
 
         with fits.open(img_path) as w:
+            # We can keep the masks as ordinals and not split into a number of dimensions
             hdul = w[0].data.byteswap().newbyteorder()
-            target_asi = np.array(hdul).astype("int8")
-            target_asi = nd.interpolation.zoom(target_asi, zoom=0.5)
-            target_asi = binaryise(target_asi)
-            target_asi = np.expand_dims(target_asi, axis=0).astype(np.float16)
-            target_asi = make_sparse(target_asi, self.device)
+            target_mask = np.array(hdul).astype("int8")
+            target_mask = nd.interpolation.zoom(target_mask, zoom=0.5)
+            target_mask = np.expand_dims(target_mask, axis=0).astype(np.float16)
+            target_mask = make_sparse(target_mask, self.device)
    
-        img_path = os.path.join(self.img_dir, self.img_targets.iloc[idx, 2])
-        
-        with fits.open(img_path) as w:
-            hdul = w[0].data.byteswap().newbyteorder()
-            target_asj = np.array(hdul).astype("int8")
-            target_asj = nd.interpolation.zoom(target_asj, zoom=0.5)
-            target_asj = binaryise(target_asj)
-            target_asj = np.expand_dims(target_asj, axis=0).astype(np.float16)
-            target_asj = make_sparse(target_asj, self.device)
-
         if self.transform:
             source_image = self.transform(source_image)
 
         if self.target_transform:
-            target_asi = self.target_transform(target_asi)
-            target_asj = self.target_transform(target_asj)
+            target_mask = self.target_transform(target_mask)
 
-        return source_image, target_asi, target_asj
+        return source_image, target_mask

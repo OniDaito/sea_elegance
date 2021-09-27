@@ -20,6 +20,7 @@ import torch.optim as optim
 from data.loader import WormDataset
 from typing import List, Tuple
 from net.unet import NetU
+from net.dice_score import dice_loss
 import matplotlib.pyplot as plt
 import torchvision
 from torch.utils.tensorboard import SummaryWriter
@@ -42,9 +43,15 @@ def binaryise(input_tensor: torch.Tensor) -> torch.Tensor:
 
 def loss_func(result, target) -> torch.Tensor:
     # return F.l1_loss(result, target, reduction="sum")
-    criterion = nn.BCEWithLogitsLoss()
+
+    criterion = nn.CrossEntropyLoss()
     dense = target.to_dense().to(result.device)
-    return criterion(result, dense)
+    loss = criterion(result, dense) + dice_loss(F.softmax(result, dim=1).float(),
+                                                F.one_hot(target, model.n_classes).permute(
+        0, 3, 1, 2).float(),
+        multiclass=True)
+
+    return loss
 
 
 def reduce_image(image, axis=1) -> np.ndarray:
@@ -71,11 +78,15 @@ def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
 
     # write to tensorboard
     writer.add_image('test_source_image', reduce_image(source[0]), step)
-    writer.add_image('test_source_image_side', reduce_image(source[0], 2), step)
-    writer.add_image('test_target_image', reduce_image(target_asi.to_dense()[0]), step)
-    writer.add_image('test_target_image_side', reduce_image(target_asi.to_dense()[0], 2), step)
+    writer.add_image('test_source_image_side',
+                     reduce_image(source[0], 2), step)
+    writer.add_image('test_target_image', reduce_image(
+        target_asi.to_dense()[0]), step)
+    writer.add_image('test_target_image_side', reduce_image(
+        target_asi.to_dense()[0], 2), step)
     writer.add_image('test_predict_image', reduce_image(final[0]), step)
-    writer.add_image('test_predict_image_side', reduce_image(final[0], 2), step)
+    writer.add_image('test_predict_image_side',
+                     reduce_image(final[0], 2), step)
     writer.add_scalar('test loss', loss, step)
 
 
@@ -83,11 +94,12 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader, optimiser,
     model.train()
 
     for epoch in range(args.epochs):
-        for batch_idx, (source, target_asi, _) in enumerate(train_data):
+        for batch_idx, (source, target_mask, _) in enumerate(train_data):
             optimiser.zero_grad()
             result = model(source)
-            target_asi = target_asi.to(result.device)
-            loss = loss_func(result, target_asi)
+            target_mask = target_mask.to(result.device)
+            loss = loss_func(result, target_mask)
+
             loss.backward()
             # Nicked from U-net example - not sure why
             #nn.utils.clip_grad_value_(model.parameters(), 0.1)
@@ -111,13 +123,15 @@ def load_data(args, device) -> Tuple[DataLoader]:
                             img_dir=args.image_path,
                             device=device)
     #print("Length of Worm Dataset", len(worm_data), "on device", device)
-   
+
     dsize = args.train_size + args.test_size + args.valid_size
     assert(dsize <= len(worm_data))
     train_dataset, test_dataset, _ = torch.utils.data.random_split(
         worm_data, [args.train_size, args.test_size, len(worm_data) - dsize])
-    train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
-    test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=True)
+    train_dataloader = DataLoader(
+        train_dataset, batch_size=args.batch_size, shuffle=True)
+    test_dataloader = DataLoader(
+        test_dataset, batch_size=args.batch_size, shuffle=True)
     return (train_dataloader, test_dataloader)
 
 
@@ -170,7 +184,8 @@ if __name__ == "__main__":
     train_data, test_data = load_data(args, device)
     model = create_model(args, device)
     # Adam optimiser results in NaNs which is a real shame
-    optimiser = optim.Adam(model.parameters(), lr=args.lr, weight_decay=1e-5, eps=1e-3)
+    optimiser = optim.Adam(model.parameters(), lr=args.lr,
+                           weight_decay=1e-5, eps=1e-3)
     #optimiser = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=0.9)
     #optimiser = optim.Rprop(model.parameters(), lr=args.lr)
 

@@ -101,7 +101,7 @@ class NetU(nn.Module):
     def __init__(self, dtype=torch.float16):
         super(NetU, self).__init__()
         self.n_channels = 1
-        self.n_classes = 1
+        self.n_classes = 5 # 5 probabilities for each of the neurons or background. TODO - might need to change this to 4?
         self.bilinear = True
 
         self.inc = mp.DoubleConv(1, 64, dtype=dtype)
