@@ -46,7 +46,7 @@ def loss_func(result, target) -> torch.Tensor:
 
     criterion = nn.CrossEntropyLoss()
     dense = target.to_dense().to(result.device)
-    loss = criterion(result, dense) + dice_loss(F.softmax(result, dim=1).float(),
+    loss = criterion(result.squeeze(), dense) + dice_loss(F.softmax(result, dim=1).float(),
                                                 F.one_hot(target, model.n_classes).permute(
         0, 3, 1, 2).float(),
         multiclass=True)
