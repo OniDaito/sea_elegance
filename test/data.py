@@ -33,9 +33,9 @@ class Data(unittest.TestCase):
         dataloader = DataLoader(worm_data, batch_size=3, shuffle=False)
         #test_dataloader = DataLoader(test_dataset, batch_size=3, shuffle=False)
 
-        train_source, train_asi, train_asj = next(iter(dataloader))
+        train_source, train_mask = next(iter(dataloader))
         print(f"Feature batch shape: {train_source.size()}")
-        print(f"Labels batch shape: {train_asi.size()}")
+        print(f"Labels batch shape: {train_mask.size()}")
         print("Source Data type", train_source.dtype)
      
         #tt = train_asi.to_dense()
@@ -44,13 +44,12 @@ class Data(unittest.TestCase):
         #val = float(tt[0][0][13][76][228])
         #self.assertTrue(math.fabs(val - 0.0005) < 0.0001)
 
-        f, axarr = plt.subplots(3, 1)
+        f, axarr = plt.subplots(2, 1)
         train_source = np.sum(train_source[0].squeeze().numpy().astype(float), axis=0)
         axarr[0].imshow(train_source)
-        train_asi = np.sum(train_asi.to_dense()[0].squeeze().numpy().astype(float), axis=0)
-        axarr[1].imshow(train_asi)
-        train_asj = np.sum(train_asj.to_dense()[0].squeeze().numpy().astype(float), axis=0)
-        axarr[2].imshow(train_asj)
+        train_mask = np.sum(train_mask.float().to_dense()[0].squeeze().numpy(), axis=0)
+        axarr[1].imshow(train_mask)
+     
         plt.show()
 
     def test_scale(self):
@@ -63,7 +62,7 @@ class Data(unittest.TestCase):
             plt.show()
 
     def test_reduce(self):
-        img_path = "./test/images/asi.fits"
+        img_path = "./test/images/mask.fits"
         with fits.open(img_path) as w:
             hdul = w[0].data.byteswap().newbyteorder()
             source_image = np.array(hdul).astype("int8")

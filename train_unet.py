@@ -42,21 +42,40 @@ def binaryise(input_tensor: torch.Tensor) -> torch.Tensor:
 
 
 def loss_func(result, target) -> torch.Tensor:
-    # return F.l1_loss(result, target, reduction="sum")
+    # We weight the loss as most of the image is 0, or background.
+    # TODO It looks like there is a bug in class weights! Should have 5 weight for the 5
+    # classes but it only accepts 4!
+    # TODO also, float16 isn't working well with this loss, unless I ignore gradients on the 0 class
+    class_weights = torch.tensor([1.0, 1.0, 1,0, 1.0], dtype=torch.float16, device=result.device)
+    #criterion = nn.CrossEntropyLoss(weight=class_weights)
+    criterion = nn.CrossEntropyLoss(weight=class_weights, ignore_index=0)
+    dense = target.to_dense().long().to(result.device)
 
-    criterion = nn.CrossEntropyLoss()
-    dense = target.to_dense().to(result.device)
-    loss = criterion(result.squeeze(), dense) + dice_loss(F.softmax(result, dim=1).float(),
-                                                F.one_hot(target, model.n_classes).permute(
-        0, 3, 1, 2).float(),
-        multiclass=True)
+    # TODO - adjusted the permute here. Not sure if that's going to be correct.
+    #loss = criterion(result, dense)  + dice_loss(F.softmax(result, dim=1).float(),
+    #                                            F.one_hot(dense, model.n_classes).permute(
+    #    0, 4, 1, 2, 3).float(),
+    #    multiclass=True)
 
+    loss = criterion(result, dense)
     return loss
 
 
-def reduce_image(image, axis=1) -> np.ndarray:
-    return np.ndarray(np.argmax(image.cpu().numpy().astype(float), axis=axis) * 255 / image.shape[1]).astype(np.uint8)
-    # return np.max(image.cpu().numpy().astype(float), axis=axis)
+def reduce_source(image, axis=1) -> np.ndarray:
+    m = torch.max(image).item()
+    final = image.amax(axis=axis).cpu().numpy()
+    return np.array(final / m * 255).astype(np.uint8)
+
+
+def reduce_mask(image, axis=1) -> np.ndarray:
+    final = image.amax(axis=axis).cpu().unsqueeze(dim=0).numpy()
+    return np.array(final / 4 * 255).astype(np.uint8)
+
+
+def convert_result(image, axis=0) -> np.ndarray:
+    classes = image.argmax(dim=0).cpu()
+    final = classes.amax(axis=axis).unsqueeze(dim=0).numpy()
+    return np.array(final / 4 * 255).astype(np.uint8)
 
 
 def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
@@ -78,16 +97,12 @@ def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
     final = gated.int()
 
     # write to tensorboard
-    writer.add_image('test_source_image', reduce_image(source[0]), step)
-    writer.add_image('test_source_image_side',
-                     reduce_image(source[0], 2), step)
-    writer.add_image('test_target_image', reduce_image(
-        target_mask.to_dense()[0]), step)
-    writer.add_image('test_target_image_side', reduce_image(
-        target_mask.to_dense()[0], 2), step)
-    writer.add_image('test_predict_image', reduce_image(final[0]), step)
-    writer.add_image('test_predict_image_side',
-                     reduce_image(final[0], 2), step)
+    writer.add_image('test_source_image', reduce_source(source[0]), step)
+    writer.add_image('test_source_image_side', reduce_source(source[0], 2), step)
+    writer.add_image('test_target_image', reduce_mask(target_mask.to_dense()[0]), step)
+    writer.add_image('test_target_image_side', reduce_mask(target_mask.to_dense()[0], 2), step)
+    writer.add_image('test_predict_image', convert_result(final[0]), step)
+    writer.add_image('test_predict_image_side', convert_result(final[0], 1), step)
     writer.add_scalar('test loss', loss, step)
 
 

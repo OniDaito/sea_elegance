@@ -39,13 +39,12 @@ def make_sparse(input_data: np.ndarray, device):
     indices = []
     data = []
     
-    for b in range(input_data.shape[0]):
-        for z in range(input_data.shape[1]):
-            for y in range(input_data.shape[2]):
-                for x in range(input_data.shape[3]):
-                    if input_data[b][z][y][x] != 0:
-                        indices.append([b, z, y, x])
-                        data.append(input_data[b][z][y][x])
+    for z in range(input_data.shape[0]):
+        for y in range(input_data.shape[1]):
+            for x in range(input_data.shape[2]):
+                if input_data[z][y][x] != 0:
+                    indices.append([z, y, x])
+                    data.append(input_data[z][y][x])
 
     s = torch.sparse_coo_tensor(list(zip(*indices)), data, torch.Size(input_data.shape))
     s.to(device)
@@ -82,14 +81,24 @@ class WormDataset(Dataset):
             # exploding gradients and optimisation.
             source_image = torch.tensor(source_image, dtype=torch.float16, device=self.device)
 
+
         img_path = os.path.join(self.img_dir, self.img_targets.iloc[idx, 1])
 
         with fits.open(img_path) as w:
             # We can keep the masks as ordinals and not split into a number of dimensions
             hdul = w[0].data.byteswap().newbyteorder()
             target_mask = np.array(hdul).astype("int8")
+            # nd interpolation will do 3D BUT it invents new classes (-1 and 5) which messes
+            # everything up, so we add a clamp. This might not be ideal and could break
+            # things in the future, so we'll need to add a 3D resize in the dataset creation
+            # in the wiggle project.
             target_mask = nd.interpolation.zoom(target_mask, zoom=0.5)
-            target_mask = np.expand_dims(target_mask, axis=0).astype(np.float16)
+            target_mask = np.clip(target_mask, 0, 4)
+
+            assert(np.all(target_mask >= 0))
+            assert(np.all(target_mask < 5))
+            target_mask = target_mask.astype(np.float16)
+            
             target_mask = make_sparse(target_mask, self.device)
    
         if self.transform:
