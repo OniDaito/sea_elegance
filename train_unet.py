@@ -67,7 +67,7 @@ def reduce_source(image, axis=1) -> np.ndarray:
     return np.array(final / m * 255).astype(np.uint8)
 
 
-def reduce_mask(image, axis=1) -> np.ndarray:
+def reduce_mask(image, axis=0) -> np.ndarray:
     final = image.amax(axis=axis).cpu().unsqueeze(dim=0).numpy()
     return np.array(final / 4 * 255).astype(np.uint8)
 
@@ -100,7 +100,7 @@ def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
     writer.add_image('test_source_image', reduce_source(source[0]), step)
     writer.add_image('test_source_image_side', reduce_source(source[0], 2), step)
     writer.add_image('test_target_image', reduce_mask(target_mask.to_dense()[0]), step)
-    writer.add_image('test_target_image_side', reduce_mask(target_mask.to_dense()[0], 2), step)
+    writer.add_image('test_target_image_side', reduce_mask(target_mask.to_dense()[0], 1), step)
     writer.add_image('test_predict_image', convert_result(final[0]), step)
     writer.add_image('test_predict_image_side', convert_result(final[0], 1), step)
     writer.add_scalar('test loss', loss, step)
