@@ -95,7 +95,7 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader, optimiser,
     model.train()
 
     for epoch in range(args.epochs):
-        for batch_idx, (source, target_mask, _) in enumerate(train_data):
+        for batch_idx, (source, target_mask) in enumerate(train_data):
             optimiser.zero_grad()
             result = model(source)
             target_mask = target_mask.to(result.device)
