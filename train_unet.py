@@ -55,15 +55,16 @@ def loss_func(result, target) -> torch.Tensor:
 
 
 def reduce_image(image, axis=1) -> np.ndarray:
-    return np.max(image.cpu().numpy().astype(float), axis=axis)
+    return np.ndarray(np.argmax(image.cpu().numpy().astype(float), axis=axis) * 255 / image.shape[1]).astype(np.uint8)
+    # return np.max(image.cpu().numpy().astype(float), axis=axis)
 
 
 def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
     model.eval()
-    source, target_asi, _ = next(iter(test_data))
+    source, target_mask = next(iter(test_data))
     result = model.forward(source)
-    target_asi = target_asi.to(result.device)
-    loss = loss_func(result, target_asi)
+    target_mask = target_mask.to(result.device)
+    loss = loss_func(result, target_mask)
     print('Test Step: {}.\tLoss: {:.6f}'.format(step, loss))
 
     # create grid of images for tensorboard
@@ -81,9 +82,9 @@ def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
     writer.add_image('test_source_image_side',
                      reduce_image(source[0], 2), step)
     writer.add_image('test_target_image', reduce_image(
-        target_asi.to_dense()[0]), step)
+        target_mask.to_dense()[0]), step)
     writer.add_image('test_target_image_side', reduce_image(
-        target_asi.to_dense()[0], 2), step)
+        target_mask.to_dense()[0], 2), step)
     writer.add_image('test_predict_image', reduce_image(final[0]), step)
     writer.add_image('test_predict_image_side',
                      reduce_image(final[0], 2), step)
