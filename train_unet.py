@@ -121,7 +121,7 @@ def reduce_mask(image, axis=0) -> np.ndarray:
 
 
 def convert_result(image, axis=0) -> np.ndarray:
-    classes = image.argmax(dim=0).cpu()
+    classes = image.max(dim=0)[0].cpu()
     final = classes.amax(axis=axis).unsqueeze(dim=0).numpy()
     return np.array(final / 4 * 255).astype(np.uint8)
 
