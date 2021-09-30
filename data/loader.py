@@ -79,9 +79,8 @@ class WormDataset(Dataset):
             source_image = np.expand_dims(source_image, axis=0)
             # Divide by the maximum possible in order to normalise the input. Should help with
             # exploding gradients and optimisation.
-            source_image = torch.tensor(source_image, dtype=torch.float16, device=self.device)
-
-
+            source_image_final = torch.tensor(source_image, dtype=torch.float16, device=self.device)
+        
         img_path = os.path.join(self.img_dir, self.img_targets.iloc[idx, 1])
 
         with fits.open(img_path) as w:
@@ -98,13 +97,12 @@ class WormDataset(Dataset):
             assert(np.all(target_mask >= 0))
             assert(np.all(target_mask < 5))
             target_mask = target_mask.astype(np.float16)
-            
-            target_mask = make_sparse(target_mask, self.device)
+            target_mask_final = make_sparse(target_mask, self.device)
    
         if self.transform:
             source_image = self.transform(source_image)
 
         if self.target_transform:
-            target_mask = self.target_transform(target_mask)
+            target_mask_final = self.target_transform(target_mask_final)
 
-        return source_image, target_mask
+        return source_image_final, target_mask_final

@@ -11,6 +11,7 @@ train_unet.py - train our u-net model - our main entry point.
 from torch.utils.tensorboard.summary import image_boxes
 from net.guru import GuruMeditation
 import torch
+import pandas as pd
 import argparse
 import torch.nn as nn
 import numpy as np
@@ -20,12 +21,67 @@ import torch.optim as optim
 from data.loader import WormDataset
 from typing import List, Tuple
 from net.unet import NetU
-from net.dice_score import dice_loss
 import matplotlib.pyplot as plt
+from pynvml.smi import nvidia_smi
 import torchvision
 from torch.utils.tensorboard import SummaryWriter
 from torch import autograd
 import pdb
+import GPUtil
+from util.plot import plot_mem
+
+
+def _get_gpu_mem(synchronize=True, empty_cache=True):
+    return torch.cuda.memory_allocated(), torch.cuda.memory_reserved()
+
+
+def _generate_mem_hook(handle_ref, mem, idx, hook_type, exp):
+    def hook(self, *args):
+        if len(mem) == 0 or mem[-1]["exp"] != exp:
+            call_idx = 0
+        else:
+            call_idx = mem[-1]["call_idx"] + 1
+
+        mem_all, mem_cached = _get_gpu_mem()
+        torch.cuda.synchronize()
+        mem.append({
+            'layer_idx': idx,
+            'call_idx': call_idx,
+            'layer_type': type(self).__name__,
+            'exp': exp,
+            'hook_type': hook_type,
+            'mem_all': mem_all,
+            'mem_cached': mem_cached,
+        })
+
+    return hook
+
+
+def _add_memory_hooks(idx, mod, mem_log, exp, hr):
+    h = mod.register_forward_pre_hook(_generate_mem_hook(hr, mem_log, idx, 'pre', exp))
+    hr.append(h)
+
+    h = mod.register_forward_hook(_generate_mem_hook(hr, mem_log, idx, 'fwd', exp))
+    hr.append(h)
+
+    h = mod.register_backward_hook(_generate_mem_hook(hr, mem_log, idx, 'bwd', exp))
+    hr.append(h)
+
+def log_mem(model, inp, mem_log=None, exp=None):
+    mem_log = mem_log or []
+    exp = exp or f'exp_{len(mem_log)}'
+    hr = []
+    for idx, module in enumerate(model.modules()):
+        _add_memory_hooks(idx, module, mem_log, exp, hr)
+
+    try:
+        out = model(inp)
+        loss = out.sum()
+        loss.backward()
+    finally:
+        [h.remove() for h in hr]
+
+        return mem_log
 
 
 def matplotlib_imshow(img):
@@ -43,12 +99,10 @@ def binaryise(input_tensor: torch.Tensor) -> torch.Tensor:
 
 def loss_func(result, target) -> torch.Tensor:
     # We weight the loss as most of the image is 0, or background.
-    # TODO It looks like there is a bug in class weights! Should have 5 weight for the 5
-    # classes but it only accepts 4!
     # TODO also, float16 isn't working well with this loss, unless I ignore gradients on the 0 class
-    class_weights = torch.tensor([1.0, 1.0, 1,0, 1.0], dtype=torch.float16, device=result.device)
+    class_weights = torch.tensor([0.01, 1.0, 1.0, 1.0, 1.0], dtype=torch.float16, device=result.device)
     #criterion = nn.CrossEntropyLoss(weight=class_weights)
-    criterion = nn.CrossEntropyLoss(weight=class_weights, ignore_index=0)
+    criterion = nn.CrossEntropyLoss(weight=class_weights)
     dense = target.to_dense().long().to(result.device)
 
     # TODO - adjusted the permute here. Not sure if that's going to be correct.
@@ -80,34 +134,39 @@ def convert_result(image, axis=0) -> np.ndarray:
 
 def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
     model.eval()
-    source, target_mask = next(iter(test_data))
-    result = model.forward(source)
-    target_mask = target_mask.to(result.device)
-    loss = loss_func(result, target_mask)
-    print('Test Step: {}.\tLoss: {:.6f}'.format(step, loss))
+    GPUtil.showUtilization()
+    with torch.no_grad():
+        source, target_mask = next(iter(test_data))
+        result = model.forward(source)
+        target_mask = target_mask.to(result.device)
+        loss = loss_func(result, target_mask)
+        print('Test Step: {}.\tLoss: {:.6f}'.format(step, loss))
 
-    # create grid of images for tensorboard
-    # 16 bit int image maximum really so use that range
-    # Only showing the first of the batch as we have 3D images, so we are going with 2D slices
-    #source_grid = torchvision.utils.make_grid(reduce_image(source), normalize=True, value_range=(0, 4095))
-    #source_grid_side = torchvision.utils.make_grid(reduce_image(source, 3), normalize=True, value_range=(0, 4095))
-    # Pass output through a sigmnoid for single class prediction
-    sigged = torch.sigmoid(result)
-    gated = torch.gt(sigged, 0.5)
-    final = gated.int()
+        # write to tensorboard
+        writer.add_image('test_source_image', reduce_source(source[0]), step)
+        writer.add_image('test_source_image_side', reduce_source(source[0], 2), step)
+        writer.add_image('test_target_image', reduce_mask(target_mask.to_dense()[0]), step)
+        writer.add_image('test_target_image_side', reduce_mask(target_mask.to_dense()[0], 1), step)
+        writer.add_image('test_predict_image', convert_result(result[0]), step)
+        writer.add_image('test_predict_image_side', convert_result(result[0], 1), step)
+        writer.add_scalar('test loss', loss, step)
 
-    # write to tensorboard
-    writer.add_image('test_source_image', reduce_source(source[0]), step)
-    writer.add_image('test_source_image_side', reduce_source(source[0], 2), step)
-    writer.add_image('test_target_image', reduce_mask(target_mask.to_dense()[0]), step)
-    writer.add_image('test_target_image_side', reduce_mask(target_mask.to_dense()[0], 1), step)
-    writer.add_image('test_predict_image', convert_result(final[0]), step)
-    writer.add_image('test_predict_image_side', convert_result(final[0], 1), step)
-    writer.add_scalar('test loss', loss, step)
+        nvsmi = nvidia_smi.getInstance()
+        nvsmi.DeviceQuery('memory.free, memory.total')
 
 
 def train(args, model, train_data: DataLoader, test_data: DataLoader, optimiser, writer: SummaryWriter):
+    pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print("Total trainable params:", pytorch_total_params)
+    pytorch_total_params = sum(p.numel() for p in model.parameters())
+    print("Total params:", pytorch_total_params)
     model.train()
+
+    mem_log = []
+    exp = 0
+    hr = []
+    for idx, module in enumerate(model.modules()):
+        _add_memory_hooks(idx, module, mem_log, exp, hr)
 
     for epoch in range(args.epochs):
         for batch_idx, (source, target_mask) in enumerate(train_data):
@@ -115,22 +174,28 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader, optimiser,
             result = model(source)
             target_mask = target_mask.to(result.device)
             loss = loss_func(result, target_mask)
-
             loss.backward()
-            # Nicked from U-net example - not sure why
-            #nn.utils.clip_grad_value_(model.parameters(), 0.1)
             optimiser.step()
             step = epoch * len(train_data) + (batch_idx * args.batch_size)
-            writer.add_scalar('training loss', loss, step)
-            print(
-                'Train Epoch / Step: {} {}.\tLoss: {:.6f}'.format(epoch, batch_idx, loss))
+            writer.add_scalar('training loss', float(loss), step)
+            print('Train Epoch / Step: {} {}.\tLoss: {:.6f}'.format(epoch, batch_idx, float(loss)))
+            del loss
 
             # We save here because we want our first step to be untrained
             # network
             if batch_idx % args.log_interval == 0:
-                save(args, model)
+                #save(args, model)
                 test(args, model, test_data, step, writer)
                 model.train()
+            
+            del source, target_mask
+            torch.cuda.empty_cache()
+
+    df = pd.DataFrame(mem_log)
+    with pd.option_context('display.max_rows', None, 'display.max_columns', None):  # more options can be specified also
+        print(df)
+    #print(torch.cuda.memory_stats())
+    #plot_mem(df, exps=['baseline'], output_file=f'baseline_memory_plot.png')
 
 
 def load_data(args, device) -> Tuple[DataLoader]:
@@ -195,6 +260,11 @@ if __name__ == "__main__":
 
     use_cuda = not args.no_cuda and torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
+    print("Using device", device)
+
+    torch.backends.cudnn.benchmark = True 
+    torch.backends.cudnn.enabled = True
+    torch.backends.cuda.cufft_plan_cache.max_size = 1024
 
     # Create all the things we need
     train_data, test_data = load_data(args, device)
@@ -212,6 +282,6 @@ if __name__ == "__main__":
     train(args, model, train_data, test_data, optimiser, writer)
 
     # Final things to write to tensorboard
-    images, _, _ = next(iter(train_data))
-    writer.add_graph(model, images)
+    #images, _, _ = next(iter(train_data))
+    #writer.add_graph(model, images)
     writer.close()

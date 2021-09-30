@@ -39,7 +39,8 @@ class Down(nn.Module):
     def __init__(self, in_channels, out_channels, dtype=torch.float16):
         super().__init__()
         self.maxpool_conv = nn.Sequential(
-            nn.MaxPool3d(2),
+            # nn.MaxPool3d(2),
+            nn.Conv3d(in_channels, in_channels, kernel_size=2, stride=2, dtype=dtype),
             DoubleConv(in_channels, out_channels, dtype=dtype)
         )
 
