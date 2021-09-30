@@ -9,9 +9,7 @@ train_unet.py - train our u-net model - our main entry point.
 
 """
 from torch.utils.tensorboard.summary import image_boxes
-from net.guru import GuruMeditation
 import torch
-import pandas as pd
 import argparse
 import torch.nn as nn
 import numpy as np
@@ -22,12 +20,8 @@ from data.loader import WormDataset
 from typing import List, Tuple
 from net.unet import NetU
 import matplotlib.pyplot as plt
-from pynvml.smi import nvidia_smi
-import torchvision
 from torch.utils.tensorboard import SummaryWriter
 from torch import autograd
-import pdb
-import GPUtil
 from util.plot import plot_mem
 
 
@@ -100,7 +94,7 @@ def binaryise(input_tensor: torch.Tensor) -> torch.Tensor:
 def loss_func(result, target) -> torch.Tensor:
     # We weight the loss as most of the image is 0, or background.
     # TODO also, float16 isn't working well with this loss, unless I ignore gradients on the 0 class
-    class_weights = torch.tensor([0.01, 1.0, 1.0, 1.0, 1.0], dtype=torch.float16, device=result.device)
+    class_weights = torch.tensor([0.001, 1.0, 1.0, 1.0, 1.0], dtype=torch.float16, device=result.device)
     #criterion = nn.CrossEntropyLoss(weight=class_weights)
     criterion = nn.CrossEntropyLoss(weight=class_weights)
     dense = target.to_dense().long().to(result.device)
@@ -134,7 +128,7 @@ def convert_result(image, axis=0) -> np.ndarray:
 
 def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
     model.eval()
-    GPUtil.showUtilization()
+
     with torch.no_grad():
         source, target_mask = next(iter(test_data))
         result = model.forward(source)
@@ -151,9 +145,6 @@ def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
         writer.add_image('test_predict_image_side', convert_result(result[0], 1), step)
         writer.add_scalar('test loss', loss, step)
 
-        nvsmi = nvidia_smi.getInstance()
-        nvsmi.DeviceQuery('memory.free, memory.total')
-
 
 def train(args, model, train_data: DataLoader, test_data: DataLoader, optimiser, writer: SummaryWriter):
     pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -161,12 +152,6 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader, optimiser,
     pytorch_total_params = sum(p.numel() for p in model.parameters())
     print("Total params:", pytorch_total_params)
     model.train()
-
-    mem_log = []
-    exp = 0
-    hr = []
-    for idx, module in enumerate(model.modules()):
-        _add_memory_hooks(idx, module, mem_log, exp, hr)
 
     for epoch in range(args.epochs):
         for batch_idx, (source, target_mask) in enumerate(train_data):
@@ -190,12 +175,6 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader, optimiser,
             
             del source, target_mask
             torch.cuda.empty_cache()
-
-    df = pd.DataFrame(mem_log)
-    with pd.option_context('display.max_rows', None, 'display.max_columns', None):  # more options can be specified also
-        print(df)
-    #print(torch.cuda.memory_stats())
-    #plot_mem(df, exps=['baseline'], output_file=f'baseline_memory_plot.png')
 
 
 def load_data(args, device) -> Tuple[DataLoader]:
