@@ -25,6 +25,7 @@ from torch.utils.tensorboard import SummaryWriter
 from torch import autograd
 from util.plot import plot_mem
 from util.loadsave import save_checkpoint, save_model
+from codecarbon import track_emissions
 
 
 def _get_gpu_mem(synchronize=True, empty_cache=True):
@@ -149,6 +150,7 @@ def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
         writer.add_scalar('test loss', loss, step)
 
 
+@track_emissions(project_name="sea_elegance_multi")
 def train(args, model, train_data: DataLoader, test_data: DataLoader, optimiser, writer: SummaryWriter):
     pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print("Total trainable params:", pytorch_total_params)
