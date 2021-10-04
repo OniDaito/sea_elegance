@@ -8,6 +8,7 @@ Author : Benjamin Blundell - k1803390@kcl.ac.uk
 train_unet.py - train our u-net model - our main entry point.
 
 """
+from torch.serialization import save
 from torch.utils.tensorboard.summary import image_boxes
 import torch
 import argparse
@@ -23,6 +24,7 @@ import matplotlib.pyplot as plt
 from torch.utils.tensorboard import SummaryWriter
 from torch import autograd
 from util.plot import plot_mem
+from util.loadsave import save_checkpoint, save_model
 
 
 def _get_gpu_mem(synchronize=True, empty_cache=True):
@@ -60,6 +62,7 @@ def _add_memory_hooks(idx, mod, mem_log, exp, hr):
 
     h = mod.register_backward_hook(_generate_mem_hook(hr, mem_log, idx, 'bwd', exp))
     hr.append(h)
+
 
 def log_mem(model, inp, mem_log=None, exp=None):
     mem_log = mem_log or []
@@ -164,14 +167,16 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader, optimiser,
             step = epoch * len(train_data) + (batch_idx * args.batch_size)
             writer.add_scalar('training loss', float(loss), step)
             print('Train Epoch / Step: {} {}.\tLoss: {:.6f}'.format(epoch, batch_idx, float(loss)))
-            del loss
 
-            # We save here because we want our first step to be untrained
-            # network
             if batch_idx % args.log_interval == 0:
-                #save(args, model)
+                save_checkpoint(model, optimiser, epoch, batch_idx, loss, args, args.savedir, args.savename)
                 test(args, model, test_data, step, writer)
                 model.train()
+            
+            del loss
+
+            if batch_idx % args.save_interval == 0:
+                save_model(model, args.savedir + "/model.tar")
             
             del source, target_mask
             torch.cuda.empty_cache()
@@ -202,10 +207,6 @@ def create_model(args, device) -> NetU:
     return model
 
 
-def save(args, model):
-    torch.save(model, args.savedir + '/model.pth')
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='PyTorch Shaper Train')
     parser.add_argument('--batch-size', type=int, default=2,
@@ -220,11 +221,20 @@ if __name__ == "__main__":
                         help='disables CUDA training')
     parser.add_argument('--seed', type=int, default=1, metavar='S',
                         help='random seed (default: 1)')
-    parser.add_argument('--log-interval', type=int, default=100,
+    parser.add_argument('--log-interval', type=int, default=10,
                         metavar='N',
                         help='how many batches to wait before logging training status')
     parser.add_argument('--savedir', default="./save",
                         help='The name for checkpoint save directory.')
+    parser.add_argument("--savename", default="checkpoint.pth.tar",
+        help="The name for checkpoint save file.",
+    )
+    parser.add_argument(
+        "--save-interval",
+        type=int,
+        default=100,
+        help="how many batches to wait before saving.",
+    )
     parser.add_argument('--image-path', default="",
                         help='Directory of images for training.')
     parser.add_argument('--train-size', type=int, default=22,
