@@ -39,7 +39,7 @@ def image_test(model, device, input_image):
         im = input_image.unsqueeze(dim=0).unsqueeze(dim=0)
         im = im.to(device)
         x = model.forward(im)
-        im = torch.squeeze(x).squeeze(x).squeeze(x)
+        x = torch.squeeze(x)
         save_image(x, name="guess.jpg")
         save_fits(x, name="guess.fits")
 
