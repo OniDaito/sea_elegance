@@ -37,7 +37,6 @@ def loss_func(result, target) -> torch.Tensor:
         [0.001, 1.0, 1.0, 1.0, 1.0], dtype=torch.float16, device=result.device)
     #criterion = nn.CrossEntropyLoss(weight=class_weights)
     criterion = nn.CrossEntropyLoss(weight=class_weights)
-    dense = target.to_dense().long().to(result.device)
 
     # TODO - adjusted the permute here. Not sure if that's going to be correct.
     # loss = criterion(result, dense)  + dice_loss(F.softmax(result, dim=1).float(),
@@ -45,7 +44,7 @@ def loss_func(result, target) -> torch.Tensor:
     #    0, 4, 1, 2, 3).float(),
     #    multiclass=True)
 
-    loss = criterion(result, dense)
+    loss = criterion(result, target)
     return loss
 
 
@@ -102,7 +101,7 @@ def evaluate(args, model, data: DataLoader):
         for batch in tqdm(data, total=num_batches, desc='Evaludation round', unit='batch', leave=False):
             source, target_mask = next(iter(test_data))
             result = model.forward(source)
-            target_mask = target_mask.to(device=result.device, dtype=torch.long)
+            target_mask = target_mask.to_dense().to(device=result.device, dtype=torch.long)
             mask_true = F.one_hot(target_mask, model.n_classes).permute(0, 4, 1, 2, 3).float()
             mask_pred = F.one_hot(result.argmax(dim=1), model.n_classes).permute(0, 4, 1, 2, 3).float()
             # compute the Dice score, ignoring background
@@ -134,7 +133,7 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader,  valid_dat
         for batch_idx, (source, target_mask) in enumerate(train_data):
             optimiser.zero_grad()
             result = model(source)
-            target_mask = target_mask.to(device=result.device, dtype=torch.long)
+            target_mask = target_mask.to_dense().to(device=result.device, dtype=torch.long)
             # TODO not sure the permute is right here?
             loss = loss_func(result, target_mask) + dice_loss(F.softmax(result, dim=1).float(),
                                                               F.one_hot(target_mask, model.n_classes).permute(
