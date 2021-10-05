@@ -152,7 +152,7 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader,  valid_dat
                                                                         batch_idx, float(loss)))
 
                 # Run a validation pass, with the scheduler
-                scheduler.step(evaluate(args, model, valid_data))
+                #scheduler.step(evaluate(args, model, valid_data))
 
                 if batch_idx % args.log_interval == 0 and batch_idx != 0:
                     save_checkpoint(model, optimiser, epoch, batch_idx,
