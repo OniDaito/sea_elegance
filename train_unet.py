@@ -102,10 +102,10 @@ def evaluate(args, model, data: DataLoader):
     with torch.no_grad():
         for batch in tqdm(data, total=num_batches, desc='Evaluation round', unit='batch', leave=False):
             source, target_mask = next(iter(test_data))
-            result = model.forward(source)
+            result = model.forward(source).to(dtype=torch.float32)
             target_mask = target_mask.to(device=result.device, dtype=torch.long).to_dense()
-            mask_true = F.one_hot(target_mask, model.n_classes).permute(0, 4, 1, 2, 3).float()
-            mask_pred = F.one_hot(result.argmax(dim=1), model.n_classes).permute(0, 4, 1, 2, 3).float()
+            #mask_true = F.one_hot(target_mask, model.n_classes).permute(0, 4, 1, 2, 3).float()
+            #mask_pred = F.one_hot(result.argmax(dim=1), model.n_classes).permute(0, 4, 1, 2, 3).float()
             # compute the Dice score, ignoring background
             #dice_score += multiclass_dice_coeff(mask_pred[:, 1:, ...], mask_true[:, 1:, ...], reduce_batch_first=False)
             loss_total += criterion(result, target_mask)
@@ -136,7 +136,7 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader,  valid_dat
 
         for batch_idx, (source, target_mask) in enumerate(train_data):
             optimiser.zero_grad()
-            result = model(source)
+            result = model(source).to(dtype=torch.float32)
             target_mask = target_mask.to(device=result.device, dtype=torch.long).to_dense()
             # TODO not sure the permute is right here?
             loss = loss_func(result, target_mask)
