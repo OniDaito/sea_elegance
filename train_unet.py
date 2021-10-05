@@ -34,15 +34,13 @@ def loss_func(result, target) -> torch.Tensor:
     # We weight the loss as most of the image is 0, or background.
     # TODO also, float16 isn't working well with this loss, unless I ignore gradients on the 0 class
     class_weights = torch.tensor(
-        [0.001, 1.0, 1.0, 1.0, 1.0], dtype=torch.float16, device=result.device)
-    #criterion = nn.CrossEntropyLoss(weight=class_weights)
+        [0.1, 1.0, 1.0, 1.0, 1.0], dtype=torch.float16, device=result.device)
     criterion = nn.CrossEntropyLoss(weight=class_weights)
 
     # TODO - adjusted the permute here. Not sure if that's going to be correct.
-    # loss = criterion(result, dense)  + dice_loss(F.softmax(result, dim=1).float(),
-    #                                            F.one_hot(dense, model.n_classes).permute(
-    #    0, 4, 1, 2, 3).float(),
-    #    multiclass=True)
+    loss = criterion(result, target)  + dice_loss(F.softmax(result, dim=1).float(),
+                                                F.one_hot(target, model.n_classes).permute(
+       0, 4, 1, 2, 3).float(), multiclass=True)
 
     loss = criterion(result, target)
     return loss
@@ -71,7 +69,7 @@ def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
     with torch.no_grad():
         source, target_mask = next(iter(test_data))
         result = model.forward(source)
-        target_mask = target_mask.to(result.device)
+        target_mask = target_mask.to(device=result.device, dtype=torch.long).to_dense()
         loss = loss_func(result, target_mask)
         print('Test Step: {}.\tLoss: {:.6f}'.format(step, loss))
 
@@ -98,7 +96,7 @@ def evaluate(args, model, data: DataLoader):
     dice_score = 0
 
     with torch.no_grad():
-        for batch in tqdm(data, total=num_batches, desc='Evaludation round', unit='batch', leave=False):
+        for batch in tqdm(data, total=num_batches, desc='Evaluation round', unit='batch', leave=False):
             source, target_mask = next(iter(test_data))
             result = model.forward(source)
             target_mask = target_mask.to(device=result.device, dtype=torch.long).to_dense()

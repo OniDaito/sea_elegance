@@ -15,6 +15,7 @@ import train_unet
 import torch
 import matplotlib.pyplot as plt
 import numpy as np
+from astropy.io import fits
 
 
 class Image(unittest.TestCase):
@@ -50,3 +51,16 @@ class Image(unittest.TestCase):
         axarr[0].imshow(image_top)
         axarr[1].imshow(image_side)
         plt.show()
+
+    def test_permute(self):
+        img_path = "./test/images/mask.fits"
+        with fits.open(img_path) as w:
+            hdul = w[0].data.byteswap().newbyteorder()
+            source_image = np.array(hdul).astype("int8")
+            source = torch.tensor(source_image, dtype=torch.long)
+
+            
+
+            #reduced = np.max(source_image.astype(float), axis=1)
+            #c = plt.imshow(reduced)
+            #plt.show()
