@@ -133,61 +133,61 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader,  valid_dat
 
     # Now start the training proper
     for epoch in range(args.epochs):
+        with autograd.detect_anomaly():
+            for batch_idx, (source, target_mask) in enumerate(train_data):
+                optimiser.zero_grad()
+                result = model(source).to(dtype=torch.float32)
+                target_mask = target_mask.to(device=result.device, dtype=torch.long).to_dense()
+                # TODO not sure the permute is right here?
+                loss = loss_func(result, target_mask)
+                #loss = loss_func(result, target_mask) + dice_loss(F.softmax(result, dim=1).float(),
+                #                                                  F.one_hot(target_mask, model.n_classes).permute(
+                #                                                      0, 4, 1, 2, 3).float(),
+                #                                                  multiclass=True)
+                loss.backward()
+                optimiser.step()
+                step = epoch * len(train_data) + (batch_idx * args.batch_size)
+                writer.add_scalar('training loss', float(loss), step)
+                print('Train Epoch / Step: {} {}.\tLoss: {:.6f}'.format(epoch,
+                                                                        batch_idx, float(loss)))
 
-        for batch_idx, (source, target_mask) in enumerate(train_data):
-            optimiser.zero_grad()
-            result = model(source).to(dtype=torch.float32)
-            target_mask = target_mask.to(device=result.device, dtype=torch.long).to_dense()
-            # TODO not sure the permute is right here?
-            loss = loss_func(result, target_mask)
-            #loss = loss_func(result, target_mask) + dice_loss(F.softmax(result, dim=1).float(),
-            #                                                  F.one_hot(target_mask, model.n_classes).permute(
-            #                                                      0, 4, 1, 2, 3).float(),
-            #                                                  multiclass=True)
-            loss.backward()
-            optimiser.step()
-            step = epoch * len(train_data) + (batch_idx * args.batch_size)
-            writer.add_scalar('training loss', float(loss), step)
-            print('Train Epoch / Step: {} {}.\tLoss: {:.6f}'.format(epoch,
-                                                                    batch_idx, float(loss)))
+                # Run a validation pass, with the scheduler
+                scheduler.step(evaluate(args, model, valid_data))
 
-            # Run a validation pass, with the scheduler
-            scheduler.step(evaluate(args, model, valid_data))
+                if batch_idx % args.log_interval == 0 and batch_idx != 0:
+                    save_checkpoint(model, optimiser, epoch, batch_idx,
+                                    loss, args, args.savedir, args.savename)
+                    test(args, model, test_data, step, writer)
 
-            if batch_idx % args.log_interval == 0 and batch_idx != 0:
-                save_checkpoint(model, optimiser, epoch, batch_idx,
-                                loss, args, args.savedir, args.savename)
-                test(args, model, test_data, step, writer)
+                    # Weights and biases log
+                    histograms = {}
+                    for tag, value in model.named_parameters():
+                        tag = tag.replace('/', '.')
+                        histograms['Weights/' +
+                                tag] = wandb.Histogram(value.data.cpu())
+                        histograms['Gradients/' +
+                                tag] = wandb.Histogram(value.grad.data.cpu())
 
-                # Weights and biases log
-                histograms = {}
-                for tag, value in model.named_parameters():
-                    tag = tag.replace('/', '.')
-                    histograms['Weights/' +
-                               tag] = wandb.Histogram(value.data.cpu())
-                    histograms['Gradients/' +
-                               tag] = wandb.Histogram(value.grad.data.cpu())
+                    experiment.log({
+                        'learning rate': optimiser.param_groups[0]['lr'],
+                        # 'validation Dice': val_score,
+                        'images': wandb.Image(source[0].cpu()),
+                        'masks': {
+                            'true': wandb.Image(target_mask[0].float().cpu()),
+                            'pred': wandb.Image(torch.softmax(result, dim=1)[0].float().cpu()),
+                        },
+                        'step': batch_idx,
+                        'epoch': epoch,
+                        **histograms
+                    })
 
-                experiment.log({
-                    'learning rate': optimiser.param_groups[0]['lr'],
-                    # 'validation Dice': val_score,
-                    'images': wandb.Image(source[0].cpu()),
-                    'masks': {
-                        'true': wandb.Image(target_mask[0].float().cpu()),
-                        'pred': wandb.Image(torch.softmax(result, dim=1)[0].float().cpu()),
-                    },
-                    'step': batch_idx,
-                    'epoch': epoch,
-                    **histograms
-                })
+                del loss
 
-            del loss
+                if batch_idx % args.save_interval == 0 and batch_idx != 0:
+                    save_model(model, args.savedir + "/model.tar")
 
-            if batch_idx % args.save_interval == 0 and batch_idx != 0:
-                save_model(model, args.savedir + "/model.tar")
-
-            del source, target_mask
-            torch.cuda.empty_cache()
+                del source, target_mask
+                torch.cuda.empty_cache()
 
 
 def load_data(args, device) -> Tuple[DataLoader]:
