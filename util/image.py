@@ -11,6 +11,7 @@ util_image.py - save out our images & load images
 import torch
 import numpy as np
 from PIL import Image
+from scipy import ndimage as nd
 
 
 def save_image(img_tensor, name="ten.jpg"):
@@ -41,7 +42,7 @@ def save_image(img_tensor, name="ten.jpg"):
         img.save(name, "JPEG")
 
 
-def save_fits(img_tensor, name="ten.fits"):
+def save_fits(img_tensor, name="ten.fits", dtype=np.float32):
     """
     Save a particular tensor to an image. We add a normalisation here
     to make sure it falls in range. This version saves as a
@@ -60,6 +61,7 @@ def save_fits(img_tensor, name="ten.fits"):
 
     if hasattr(img_tensor, "detach"):
         img_tensor = np.flipud(img_tensor.detach().cpu().numpy())
+    img_tensor = img_tensor.astype(dtype)
     hdu = fits.PrimaryHDU(img_tensor)
     hdul = fits.HDUList([hdu])
     hdul.writeto(name)
@@ -104,3 +106,24 @@ def load_image(path):
     nm = np.asarray(im, dtype=np.float32)
     nm = nm / 255.0
     return torch.tensor(nm, dtype=torch.float32)
+
+
+def resize_3d(image, zoom=1.0) -> torch.Tensor:
+    """
+    Resize our 3D image
+
+    Parameters
+    ----------
+    image : torch.tensor
+        The input image we want to resize
+
+    zoom : float
+        The zoom factor for our new image
+
+    Returns
+    -------
+    torch.Tensor
+    """
+
+    target = nd.interpolation.zoom(image.cpu().numpy(), zoom=0.5)
+    return torch.tensor(target)

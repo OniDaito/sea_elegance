@@ -23,8 +23,9 @@ import torch
 import argparse
 import sys
 import os
+import numpy as np
 from util.loadsave import load_checkpoint, load_model
-from util.image import load_fits, save_fits, save_image
+from util.image import load_fits, save_fits, save_image, resize_3d
 
 
 def image_test(model, device, input_image):
@@ -37,11 +38,19 @@ def image_test(model, device, input_image):
     with torch.no_grad():
         model.eval()
         im = input_image.unsqueeze(dim=0).unsqueeze(dim=0)
+        print("Input image shape", im.shape)
         im = im.to(device)
-        x = model.forward(im)
-        x = torch.squeeze(x)
-        save_image(x, name="guess.jpg")
-        save_fits(x, name="guess.fits")
+        prediction = model.forward(im)
+        assert(not (torch.all(prediction == 0).item()))
+        classes = prediction.max(dim=1)[0].cpu()
+        #classes = torch.softmax(prediction, dim=1)[0]
+        assert(not (torch.all(classes == 0).item()))
+        final = classes.amax(axis=0)
+        coloured = final.amax(axis=0).cpu().numpy()
+        coloured = np.array(coloured / 4 * 255).astype(np.uint8)
+        print("Final", final.shape, final.dtype)
+        save_image(coloured, name="guess.jpg")
+        save_fits(prediction, name="guess.fits")
 
 
 if __name__ == "__main__":
@@ -74,8 +83,13 @@ if __name__ == "__main__":
     # Potentially load a different set of points
 
     if os.path.isfile(args.image):
-        input_image = load_fits(args.image, dtype=torch.float16)
-        image_test(model, device, input_image)
+        input_image = load_fits(args.image, dtype=torch.float32)
+        resized_image = resize_3d(input_image, 0.5)
+        normalised_image = resized_image / 4095.0
+        save_fits(normalised_image, name="normalised.fits")
+
+        final_image = torch.tensor(normalised_image).half()
+        image_test(model, device, final_image)
     else:
         print("--image must point to a valid fits file.")
         sys.exit(0)
