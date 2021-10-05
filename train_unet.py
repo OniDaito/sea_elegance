@@ -38,9 +38,9 @@ def loss_func(result, target) -> torch.Tensor:
     criterion = nn.CrossEntropyLoss(weight=class_weights)
 
     # TODO - adjusted the permute here. Not sure if that's going to be correct.
-    loss = criterion(result, target)  + dice_loss(F.softmax(result, dim=1).float(),
-                                                F.one_hot(target, model.n_classes).permute(
-       0, 4, 1, 2, 3).float(), multiclass=True)
+    #loss = criterion(result, target)  + dice_loss(F.softmax(result, dim=1).float(),
+    #                                            F.one_hot(target, model.n_classes).permute(
+    #   0, 4, 1, 2, 3).float(), multiclass=True)
 
     loss = criterion(result, target)
     return loss
@@ -91,9 +91,13 @@ def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
 
 def evaluate(args, model, data: DataLoader):
     model.eval()
-
     num_batches = len(data)
-    dice_score = 0
+    #dice_score = 0
+    loss_total = 0
+
+    class_weights = torch.tensor(
+        [0.1, 1.0, 1.0, 1.0, 1.0], dtype=torch.float16, device=model.device)
+    criterion = nn.CrossEntropyLoss(weight=class_weights)
 
     with torch.no_grad():
         for batch in tqdm(data, total=num_batches, desc='Evaluation round', unit='batch', leave=False):
@@ -103,10 +107,12 @@ def evaluate(args, model, data: DataLoader):
             mask_true = F.one_hot(target_mask, model.n_classes).permute(0, 4, 1, 2, 3).float()
             mask_pred = F.one_hot(result.argmax(dim=1), model.n_classes).permute(0, 4, 1, 2, 3).float()
             # compute the Dice score, ignoring background
-            dice_score += multiclass_dice_coeff(mask_pred[:, 1:, ...], mask_true[:, 1:, ...], reduce_batch_first=False)
+            #dice_score += multiclass_dice_coeff(mask_pred[:, 1:, ...], mask_true[:, 1:, ...], reduce_batch_first=False)
+            loss_total += criterion(result, target_mask)
 
     model.train()
-    return dice_score / num_batches
+    #return dice_score / num_batches
+    return loss_total / num_batches
 
 
 @track_emissions(project_name="sea_elegance")
