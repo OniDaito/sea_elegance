@@ -78,9 +78,9 @@ def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
         writer.add_image('test_source_image_side',
                          reduce_source(source[0], 2), step)
         writer.add_image('test_target_image', reduce_mask(
-            target_mask.to_dense()[0]), step)
+            target_mask[0]), step)
         writer.add_image('test_target_image_side', reduce_mask(
-            target_mask.to_dense()[0], 1), step)
+            target_mask[0], 1), step)
         writer.add_image('test_predict_image', convert_result(result[0]), step)
         writer.add_image('test_predict_image_side',
                          convert_result(result[0], 1), step)
