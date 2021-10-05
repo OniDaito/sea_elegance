@@ -134,7 +134,7 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader,  valid_dat
         for batch_idx, (source, target_mask) in enumerate(train_data):
             optimiser.zero_grad()
             result = model(source)
-            target_mask = target_mask.to(result.device)
+            target_mask = target_mask.to(device=result.device, dtype=torch.long)
             # TODO not sure the permute is right here?
             loss = loss_func(result, target_mask) + dice_loss(F.softmax(result, dim=1).float(),
                                                               F.one_hot(target_mask, model.n_classes).permute(
@@ -146,7 +146,7 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader,  valid_dat
             writer.add_scalar('training loss', float(loss), step)
             print('Train Epoch / Step: {} {}.\tLoss: {:.6f}'.format(epoch,
                                                                     batch_idx, float(loss)))
-          
+
             # Run a validation pass, with the scheduler
             scheduler.step(evaluate(args, model, valid_data))
 
