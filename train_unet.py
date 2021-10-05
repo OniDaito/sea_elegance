@@ -34,7 +34,7 @@ def loss_func(result, target) -> torch.Tensor:
     # We weight the loss as most of the image is 0, or background.
     # TODO also, float16 isn't working well with this loss, unless I ignore gradients on the 0 class
     class_weights = torch.tensor(
-        [0.1, 1.0, 1.0, 1.0, 1.0], dtype=torch.float16, device=result.device)
+        [0.1, 1.0, 1.0, 1.0, 1.0], dtype=torch.float32, device=result.device)
     criterion = nn.CrossEntropyLoss(weight=class_weights)
 
     # TODO - adjusted the permute here. Not sure if that's going to be correct.
@@ -96,7 +96,7 @@ def evaluate(args, model, data: DataLoader):
     loss_total = 0
 
     class_weights = torch.tensor(
-        [0.1, 1.0, 1.0, 1.0, 1.0], dtype=torch.float16, device=model.device)
+        [0.1, 1.0, 1.0, 1.0, 1.0], dtype=torch.float32, device=model.device)
     criterion = nn.CrossEntropyLoss(weight=class_weights)
 
     with torch.no_grad():
