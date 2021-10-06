@@ -127,3 +127,66 @@ def resize_3d(image, zoom=1.0) -> torch.Tensor:
 
     target = nd.interpolation.zoom(image.cpu().numpy(), zoom=0.5)
     return torch.tensor(target)
+
+
+def reduce_source(image, axis=1) -> np.ndarray:
+    """
+    Reduce the 3D image batch to a 2D single image 
+
+    Parameters
+    ----------
+    image : torch.tensor
+        The batch of 3D input images
+
+    axis : int
+        The axis to squish down - default 1.
+
+    Returns
+    -------
+    torch.Tensor
+    """
+
+    m = torch.max(image[0]).item()
+    final = image[0].amax(axis=axis).cpu().numpy()
+    return np.array(final / m * 255).astype(np.uint8)
+
+
+def reduce_mask(image, axis=0) -> np.ndarray:
+    """
+    Reduce the 3D image batch input mask to a 2D single image 
+
+    Parameters
+    ----------
+    image : torch.tensor
+        The batch of 3D input images
+
+    axis : int
+        The axis to squish down - default 0.
+
+    Returns
+    -------
+    torch.Tensor
+    """
+    final = image[0].amax(axis=axis).cpu().unsqueeze(dim=0).numpy().astype(np.float32)
+    return np.array(final / 4 * 255).astype(np.uint8)
+
+
+def reduce_result(image, axis=0) -> np.ndarray:
+    """
+    Reduce the 3D image mask result batch to a 2D single image 
+
+    Parameters
+    ----------
+    image : torch.tensor
+        The batch of 3D input images
+
+    axis : int
+        The axis to squish down - default 1.
+
+    Returns
+    -------
+    torch.Tensor
+    """
+    classes = image[0].max(dim=0)[0].cpu()
+    final = classes.amax(axis=axis).unsqueeze(dim=0).numpy()
+    return np.array(final / 4 * 255).astype(np.uint8)

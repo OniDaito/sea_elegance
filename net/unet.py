@@ -30,7 +30,7 @@ class NetUBase(nn.Module):
     ''' U-Net code. Taken from
     https://github.com/milesial/Pytorch-UNet/.'''
 
-    def __init__(self, dtype=torch.float16):
+    def __init__(self, dtype=torch.float32):
         super(NetUBase, self).__init__()
         self.n_channels = 1
         self.n_classes = 5
@@ -60,7 +60,7 @@ class NetU(nn.Module):
     ''' U-Net code, Taken from
     https://github.com/milesial/Pytorch-UNet/.'''
 
-    def __init__(self, dtype=torch.float16):
+    def __init__(self, dtype=torch.float32):
         super(NetU, self).__init__()
         self.n_channels = 1
         self.n_classes = 5
