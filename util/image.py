@@ -188,9 +188,8 @@ def reduce_result(image, axis=1) -> np.ndarray:
     -------
     torch.Tensor
     """
-    nclasses = 5
     first = image[0]
-    mid = first.amax(axis=axis)
+    mid = first.amax(dim=axis)
     mid = torch.argmax(mid, dim=0).cpu()
     return mid.numpy()
     #final = classes.amax(axis=axis).unsqueeze(dim=0).numpy()
