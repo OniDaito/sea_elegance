@@ -41,6 +41,8 @@ def image_test(model, device, input_image):
         print("Input image shape", im.shape)
         im = im.to(device)
         prediction = model.forward(im)
+        with open('prediction.npy', 'wb') as f:
+              np.save(f, prediction.detatch().cpu().numpy())
         assert(not (torch.all(prediction == 0).item()))
         classes = prediction.max(dim=1)[0].cpu()
         #classes = torch.softmax(prediction, dim=1)[0]

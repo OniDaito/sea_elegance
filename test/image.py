@@ -16,6 +16,7 @@ import torch
 import matplotlib.pyplot as plt
 import numpy as np
 from astropy.io import fits
+from util.image import reduce_result
 
 
 class Image(unittest.TestCase):
@@ -59,8 +60,19 @@ class Image(unittest.TestCase):
             source_image = np.array(hdul).astype("int8")
             source = torch.tensor(source_image, dtype=torch.long)
 
-            
-
             #reduced = np.max(source_image.astype(float), axis=1)
             #c = plt.imshow(reduced)
             #plt.show()
+
+    def test_output(self):
+        img_path = "./test/images/prediction.npy"
+        with open(img_path, 'rb') as f:
+            prediction = np.load(f).astype("float32")
+            batch = torch.tensor(prediction).unsqueeze(dim=0) 
+            image = reduce_result(batch)
+
+i
+            #reduced = np.max(source_image.astype(float), axis=1)
+            #c = plt.imshow(reduced)
+            #plt.show()
+
