@@ -191,7 +191,7 @@ def reduce_result(image, axis=1) -> np.ndarray:
     nclasses = 5
     first = image[0]
     mid = first.amax(axis=axis)
-    mid = F.one_hot(mid, nclasses).cpu()
+    mid = torch.argmax(mid, dim=0).cpu()
     return mid.numpy()
     #final = classes.amax(axis=axis).unsqueeze(dim=0).numpy()
     #return np.array(final / 4 * 255).astype(np.uint8)
