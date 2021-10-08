@@ -9,6 +9,7 @@ util_image.py - save out our images & load images
 """
 
 import torch
+import torch.nn.functional as F
 import numpy as np
 from PIL import Image
 from scipy import ndimage as nd
@@ -171,7 +172,7 @@ def reduce_mask(image, axis=0) -> np.ndarray:
     return np.array(final / 4 * 255).astype(np.uint8)
 
 
-def reduce_result(image, axis=0) -> np.ndarray:
+def reduce_result(image, axis=1) -> np.ndarray:
     """
     Reduce the 3D image mask result batch to a 2D single image 
 
@@ -187,6 +188,8 @@ def reduce_result(image, axis=0) -> np.ndarray:
     -------
     torch.Tensor
     """
-    classes = image[0].max(dim=0)[0].cpu()
-    final = classes.amax(axis=axis).unsqueeze(dim=0).numpy()
-    return np.array(final / 4 * 255).astype(np.uint8)
+    nclasses = 5
+    mid = F.one_hot(image[0].argmax(dim=0), nclasses).cpu()
+    return mid.numpy()
+    #final = classes.amax(axis=axis).unsqueeze(dim=0).numpy()
+    #return np.array(final / 4 * 255).astype(np.uint8)
