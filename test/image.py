@@ -42,10 +42,10 @@ class Image(unittest.TestCase):
         final = torch.tensor(stack)
         final = final.unsqueeze(dim=0)
 
-        image_top = train_unet.convert_result(final)
+        image_top = reduce_result(final)
         image_top = image_top.squeeze()
 
-        image_side = train_unet.convert_result(final, axis=1)
+        image_side = reduce_result(final, axis=1)
         image_side = image_side.squeeze()
 
         f, axarr = plt.subplots(2, 1)
@@ -70,6 +70,7 @@ class Image(unittest.TestCase):
             prediction = np.load(f).astype("float32")
             batch = torch.tensor(prediction).unsqueeze(dim=0) 
             reduced = reduce_result(batch)
-            plt.plot(reduced)
-            plt.savefig("test_output.png")
+            from PIL import Image
+            im = Image.fromarray(reduced).convert('RGB')
+            im.save("test_output.png")
 

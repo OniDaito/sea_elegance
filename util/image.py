@@ -172,7 +172,7 @@ def reduce_mask(image, axis=0) -> np.ndarray:
     return np.array(final / 4 * 255).astype(np.uint8)
 
 
-def reduce_result(image, axis=1) -> np.ndarray:
+def reduce_result(image, axis=0) -> np.ndarray:
     """
     Reduce the 3D image mask result batch to a 2D single image 
 
@@ -188,9 +188,18 @@ def reduce_result(image, axis=1) -> np.ndarray:
     -------
     torch.Tensor
     """
-    first = image[0]
-    mid = first.amax(dim=axis)
-    mid = torch.argmax(mid, dim=0).cpu()
-    return mid.numpy()
+    first = image[0].detach().cpu().squeeze()
+    #print(first.shape)
+    # mid = first.amax(dim=axis)
+    mid = first
+    #print(torch.all(mid == 0))
+    #mid = torch.argmax(mid, dim=0)
+    mid = F.one_hot(mid.argmax(dim=0), 5).permute(3, 0, 1, 2)
+    print(mid.shape)
+    mid = np.argmax(mid, axis=0)* 255 / mid.shape[0]
+    print(torch.all(mid==0))
+    print(mid)
+    mid = mid.amax(dim = axis)
+    return mid.numpy().astype(np.uint8)
     #final = classes.amax(axis=axis).unsqueeze(dim=0).numpy()
     #return np.array(final / 4 * 255).astype(np.uint8)
