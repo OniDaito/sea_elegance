@@ -103,10 +103,10 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader,  valid_dat
     model.train()
 
     # Weights and Biases start
-    experiment = wandb.init(project='sea_elegance',
-                            resume='allow', entity='oni')
-    experiment.config.update(
-        dict(epochs=args.epochs, batch_size=args.batch_size, learning_rate=args.lr))
+    #experiment = wandb.init(project='sea_elegance',
+    #                        resume='allow', entity='oni')
+    #experiment.config.update(
+    #    dict(epochs=args.epochs, batch_size=args.batch_size, learning_rate=args.lr))
 
     # Now start the training proper
     for epoch in range(args.epochs):
@@ -136,26 +136,26 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader,  valid_dat
                 test(args, model, test_data, step, writer)
 
                 # Weights and biases log
-                histograms = {}
-                for tag, value in model.named_parameters():
-                    tag = tag.replace('/', '.')
-                    histograms['Weights/' +
-                            tag] = wandb.Histogram(value.data.cpu())
-                    histograms['Gradients/' +
-                            tag] = wandb.Histogram(value.grad.data.cpu())
+                #histograms = {}
+                #for tag, value in model.named_parameters():
+                #    tag = tag.replace('/', '.')
+                #    histograms['Weights/' +
+                #            tag] = wandb.Histogram(value.data.cpu())
+                #    histograms['Gradients/' +
+                #            tag] = wandb.Histogram(value.grad.data.cpu())
 
-                experiment.log({
-                    'learning rate': optimiser.param_groups[0]['lr'],
-                    # 'validation Dice': val_score,
-                    'images': wandb.Image(reduce_source(source)),
-                    'masks': {
-                        'true': wandb.Image(reduce_mask(target_mask)),
-                        'pred': wandb.Image(reduce_result(result.detach())),
-                    },
-                    'step': batch_idx,
-                    'epoch': epoch,
-                    **histograms
-                })
+                #experiment.log({
+                #    'learning rate': optimiser.param_groups[0]['lr'],
+                #    # 'validation Dice': val_score,
+                #    'images': wandb.Image(reduce_source(source)),
+                #    'masks': {
+                #        'true': wandb.Image(reduce_mask(target_mask)),
+                #        'pred': wandb.Image(reduce_result(result.detach())),
+                #    },
+                #    'step': batch_idx,
+                #    'epoch': epoch,
+                #    **histograms
+                #})
 
             del loss
 
