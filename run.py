@@ -90,7 +90,7 @@ if __name__ == "__main__":
         normalised_image = resized_image / 4095.0
         save_fits(normalised_image, name="normalised.fits")
 
-        final_image = torch.tensor(normalised_image).half()
+        final_image = torch.tensor(normalised_image)
         image_test(model, device, final_image)
     else:
         print("--image must point to a valid fits file.")
