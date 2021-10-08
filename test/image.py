@@ -65,14 +65,13 @@ class Image(unittest.TestCase):
             #plt.show()
 
     def test_output(self):
-        img_path = "./test/images/prediction.npy"
+        img_path = "./test/prediction.npy"
         with open(img_path, 'rb') as f:
             prediction = np.load(f).astype("float32")
             batch = torch.tensor(prediction).unsqueeze(dim=0) 
-            image = reduce_result(batch)
-
-i
+            reduced = reduce_result(batch)
             #reduced = np.max(source_image.astype(float), axis=1)
-            #c = plt.imshow(reduced)
+            plt.plot(reduced)
             #plt.show()
+            plt.savefig("test_output.png")
 
