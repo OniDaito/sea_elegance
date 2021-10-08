@@ -70,8 +70,6 @@ class Image(unittest.TestCase):
             prediction = np.load(f).astype("float32")
             batch = torch.tensor(prediction).unsqueeze(dim=0) 
             reduced = reduce_result(batch)
-            #reduced = np.max(source_image.astype(float), axis=1)
             plt.plot(reduced)
-            #plt.show()
             plt.savefig("test_output.png")
 
