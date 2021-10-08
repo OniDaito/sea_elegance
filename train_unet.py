@@ -61,8 +61,8 @@ def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
         writer.add_image('test_source_image_side', reduce_source(source, 2), step)
         writer.add_image('test_target_image', reduce_mask(target_mask), step)
         writer.add_image('test_target_image_side', reduce_mask(target_mask, 1), step)
-        writer.add_image('test_predict_image', reduce_result(result), step)
-        writer.add_image('test_predict_image_side', reduce_result(result, 1), step)
+        writer.add_image('test_predict_image', reduce_result(result).unsqueeze(dim=0), step)
+        writer.add_image('test_predict_image_side', reduce_result(result, 1).unsqueeze(dim=0), step)
         writer.add_scalar('test loss', loss, step)
 
     model.train()
