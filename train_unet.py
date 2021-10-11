@@ -80,6 +80,7 @@ def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
 
         classes = result[0].max(dim=0)[0].cpu()
         part_reduced = classes.amax(axis=0).unsqueeze(dim=0).numpy()
+        target_reduced = target_mask[0].amax(axis=0).cpu().unsqueeze(dim=0).numpy().astype(np.float32)
 
         masked_image = wandb.Image(reduce_source(source), masks={
             "predictions": {
@@ -87,7 +88,7 @@ def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
                 "class_labels": class_labels
             },
             "ground_truth": {
-                "mask_data": target_mask,
+                "mask_data": target_reduced,
                 "class_labels": class_labels
             }
         })
