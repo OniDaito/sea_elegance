@@ -9,6 +9,7 @@ util_image.py - save out our images & load images
 """
 
 import torch
+import torch.nn.functional as F
 import numpy as np
 from PIL import Image
 from scipy import ndimage as nd
@@ -187,6 +188,9 @@ def reduce_result(image, axis=0) -> np.ndarray:
     -------
     torch.Tensor
     """
-    classes = image[0].max(dim=0)[0].cpu()
-    final = classes.amax(axis=axis).unsqueeze(dim=0).numpy()
-    return np.array(final / 4 * 255).astype(np.uint8)
+    first = image[0].detach().cpu().squeeze()
+    mid = first
+    mid = F.one_hot(mid.argmax(dim=0), 5).permute(3, 0, 1, 2)
+    mid = np.argmax(mid, axis=0)* 255 / mid.shape[0]
+    mid = mid.amax(dim = axis)
+    return mid.numpy().astype(np.uint8)

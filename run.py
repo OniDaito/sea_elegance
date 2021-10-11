@@ -41,6 +41,8 @@ def image_test(model, device, input_image):
         print("Input image shape", im.shape)
         im = im.to(device)
         prediction = model.forward(im)
+        with open('prediction.npy', 'wb') as f:
+              np.save(f, prediction.detach().cpu().numpy())
         assert(not (torch.all(prediction == 0).item()))
         classes = prediction.max(dim=1)[0].cpu()
         #classes = torch.softmax(prediction, dim=1)[0]
@@ -88,7 +90,7 @@ if __name__ == "__main__":
         normalised_image = resized_image / 4095.0
         save_fits(normalised_image, name="normalised.fits")
 
-        final_image = torch.tensor(normalised_image).half()
+        final_image = torch.tensor(normalised_image)
         image_test(model, device, final_image)
     else:
         print("--image must point to a valid fits file.")
