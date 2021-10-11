@@ -46,6 +46,7 @@ def loss_func(result, target) -> torch.Tensor:
     #loss = criterion(result, target)
     return loss
 
+
 def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
     model.eval()
 
@@ -64,6 +65,34 @@ def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
         writer.add_image('test_predict_image', reduce_result(result), step)
         writer.add_image('test_predict_image_side', reduce_result(result, 1), step)
         writer.add_scalar('test loss', loss, step)
+
+        # WandB write
+        wandb.log({'test_loss': loss, 'step': step})
+
+        # Matches these of the input data
+        class_labels = {
+            0: "background",
+            1: "ASI 1",
+            2: "ASI 2",
+            3: "ASJ 1",
+            4: "ASJ 2"
+        }
+
+        classes = result[0].max(dim=0)[0].cpu()
+        part_reduced = classes.amax(axis=0).unsqueeze(dim=0).numpy()
+
+        masked_image = wandb.Image(reduce_source(source), masks={
+            "predictions": {
+                "mask_data": part_reduced,
+                "class_labels": class_labels
+            },
+            "ground_truth": {
+                "mask_data": target_mask,
+                "class_labels": class_labels
+            }
+        })
+
+        wandb.log({"image_with_masks": masked_image, "step": step})
 
     model.train()
 
@@ -107,6 +136,8 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader,  valid_dat
                             resume='allow', entity='oni')
     experiment.config.update(
         dict(epochs=args.epochs, batch_size=args.batch_size, learning_rate=args.lr))
+    
+    wandb.watch(model)
 
     # Now start the training proper
     for epoch in range(args.epochs):
@@ -126,6 +157,7 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader,  valid_dat
             writer.add_scalar('training loss', float(loss), step)
             print('Train Epoch / Step: {} {}.\tLoss: {:.6f}'.format(epoch,
                                                                     batch_idx, float(loss)))
+            wandb.log({'training_loss': loss, 'epoch': epoch, 'batch': batch_idx})
 
             # Run a validation pass, with the scheduler
             #scheduler.step(evaluate(args, model, valid_data))
@@ -134,28 +166,6 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader,  valid_dat
                 save_checkpoint(model, optimiser, epoch, batch_idx,
                                 loss, args, args.savedir, args.savename)
                 test(args, model, test_data, step, writer)
-
-                # Weights and biases log
-                histograms = {}
-                for tag, value in model.named_parameters():
-                    tag = tag.replace('/', '.')
-                    histograms['Weights/' +
-                            tag] = wandb.Histogram(value.data.cpu())
-                    histograms['Gradients/' +
-                            tag] = wandb.Histogram(value.grad.data.cpu())
-
-                experiment.log({
-                    'learning rate': optimiser.param_groups[0]['lr'],
-                    # 'validation Dice': val_score,
-                    'images': wandb.Image(reduce_source(source)),
-                    'masks': {
-                        'true': wandb.Image(reduce_mask(target_mask)),
-                        'pred': wandb.Image(reduce_result(result.detach())),
-                    },
-                    'step': batch_idx,
-                    'epoch': epoch,
-                    **histograms
-                })
 
             del loss
 
