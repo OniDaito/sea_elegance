@@ -132,19 +132,12 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader,  valid_dat
     model.train()
 
     # Weights and Biases start
-<<<<<<< HEAD
     experiment = wandb.init(project='sea_elegance',
                             resume='allow', entity='oni')
     experiment.config.update(
         dict(epochs=args.epochs, batch_size=args.batch_size, learning_rate=args.lr))
     
     wandb.watch(model)
-=======
-    #experiment = wandb.init(project='sea_elegance',
-    #                        resume='allow', entity='oni')
-    #experiment.config.update(
-    #    dict(epochs=args.epochs, batch_size=args.batch_size, learning_rate=args.lr))
->>>>>>> a1179343b7ced5a7b1f3af1f9776f2895172d2ee
 
     # Now start the training proper
     for epoch in range(args.epochs):
@@ -174,31 +167,6 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader,  valid_dat
                                 loss, args, args.savedir, args.savename)
                 test(args, model, test_data, step, writer)
 
-<<<<<<< HEAD
-=======
-                # Weights and biases log
-                #histograms = {}
-                #for tag, value in model.named_parameters():
-                #    tag = tag.replace('/', '.')
-                #    histograms['Weights/' +
-                #            tag] = wandb.Histogram(value.data.cpu())
-                #    histograms['Gradients/' +
-                #            tag] = wandb.Histogram(value.grad.data.cpu())
-
-                #experiment.log({
-                #    'learning rate': optimiser.param_groups[0]['lr'],
-                #    # 'validation Dice': val_score,
-                #    'images': wandb.Image(reduce_source(source)),
-                #    'masks': {
-                #        'true': wandb.Image(reduce_mask(target_mask)),
-                #        'pred': wandb.Image(reduce_result(result.detach())),
-                #    },
-                #    'step': batch_idx,
-                #    'epoch': epoch,
-                #    **histograms
-                #})
-
->>>>>>> a1179343b7ced5a7b1f3af1f9776f2895172d2ee
             del loss
 
             if batch_idx % args.save_interval == 0 and batch_idx != 0:
