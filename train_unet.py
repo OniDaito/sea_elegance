@@ -8,6 +8,7 @@ Author : Benjamin Blundell - k1803390@kcl.ac.uk
 train_unet.py - train our u-net model - our main entry point.
 
 """
+from comet_ml import Experiment
 from torch.serialization import save
 from torch.utils.tensorboard.summary import image_boxes
 import torch
@@ -27,7 +28,7 @@ from torch import autograd
 from net.dice_score import dice_loss, multiclass_dice_coeff
 from util.loadsave import save_checkpoint, save_model
 from util.image import reduce_source, reduce_mask, reduce_result
-from codecarbon import track_emissions
+from codecarbon import EmissionsTracker
 import wandb
 
 
@@ -67,7 +68,7 @@ def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
         writer.add_scalar('test loss', loss, step)
 
         # WandB write
-        wandb.log({'test_loss': loss, 'step': step})
+        wandb.log({'test_loss': loss})
 
         # Matches these of the input data
         class_labels = {
@@ -79,10 +80,10 @@ def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
         }
 
         classes = result[0].max(dim=0)[0].cpu()
-        part_reduced = classes.amax(axis=0).unsqueeze(dim=0).numpy()
-        target_reduced = target_mask[0].amax(axis=0).cpu().unsqueeze(dim=0).numpy().astype(np.float32)
-
-        masked_image = wandb.Image(reduce_source(source), masks={
+        part_reduced = classes.amax(axis=0).unsqueeze(dim=0).squeeze().numpy()
+        target_reduced = target_mask[0].amax(axis=0).cpu().unsqueeze(dim=0).squeeze().numpy()
+   
+        masked_image = wandb.Image(reduce_source(source).squeeze(), masks={
             "predictions": {
                 "mask_data": part_reduced,
                 "class_labels": class_labels
@@ -93,7 +94,24 @@ def test(args, model, test_data: DataLoader, step: int, writer: SummaryWriter):
             }
         })
 
-        wandb.log({"image_with_masks": masked_image, "step": step})
+        wandb.log({"image_with_masks": masked_image})
+
+        classes = result[0].max(dim=1)[0].cpu()
+        part_reduced = classes.amax(axis=1).unsqueeze(dim=0).squeeze().numpy()
+        target_reduced = target_mask[0].amax(axis=1).cpu().unsqueeze(dim=0).squeeze().numpy()
+   
+        masked_image_side = wandb.Image(reduce_source(source, 2).squeeze(), masks={
+            "predictions": {
+                "mask_data": part_reduced,
+                "class_labels": class_labels
+            },
+            "ground_truth": {
+                "mask_data": target_reduced,
+                "class_labels": class_labels
+            }
+        })
+
+        wandb.log({"image_with_masks_side": masked_image_side})
 
     model.train()
 
@@ -109,7 +127,7 @@ def evaluate(args, model, data: DataLoader):
 
     with torch.no_grad():
         for batch in tqdm(data, total=num_batches, desc='Evaluation round', unit='batch', leave=False):
-            source, target_mask = next(iter(test_data))
+            source, target_mask = next(iter(data))
             result = model.forward(source)
             target_mask = target_mask.to(device=result.device, dtype=torch.long)
             mask_true = F.one_hot(target_mask, model.n_classes).permute(0, 4, 1, 2, 3).float()
@@ -122,7 +140,6 @@ def evaluate(args, model, data: DataLoader):
     return loss_total / num_batches
 
 
-@track_emissions(project_name="sea_elegance")
 def train(args, model, train_data: DataLoader, test_data: DataLoader,  valid_data: DataLoader,
           optimiser, scheduler, writer: SummaryWriter):
     pytorch_total_params = sum(p.numel()
@@ -132,13 +149,17 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader,  valid_dat
     print("Total params:", pytorch_total_params)
     model.train()
 
+    # CO2 tracker
+    tracker = EmissionsTracker(project_name="sea_elegance", output_dir=args.savedir, save_to_file=True)
+
     # Weights and Biases start
     experiment = wandb.init(project='sea_elegance',
                             resume='allow', entity='oni')
     experiment.config.update(
         dict(epochs=args.epochs, batch_size=args.batch_size, learning_rate=args.lr))
-    
+
     wandb.watch(model)
+    tracker.start()
 
     # Now start the training proper
     for epoch in range(args.epochs):
@@ -158,15 +179,15 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader,  valid_dat
             writer.add_scalar('training loss', float(loss), step)
             print('Train Epoch / Step: {} {}.\tLoss: {:.6f}'.format(epoch,
                                                                     batch_idx, float(loss)))
-            wandb.log({'training_loss': loss, 'epoch': epoch, 'batch': batch_idx})
-
-            # Run a validation pass, with the scheduler
-            #scheduler.step(evaluate(args, model, valid_data))
-
+            wandb.log({'training_loss': loss})
+          
             if batch_idx % args.log_interval == 0 and batch_idx != 0:
                 save_checkpoint(model, optimiser, epoch, batch_idx,
                                 loss, args, args.savedir, args.savename)
                 test(args, model, test_data, step, writer)
+                # Run a validation pass, with the scheduler
+                scheduler.step(evaluate(args, model, valid_data))
+                wandb.log({'learning_rate': optimiser.param_groups[0]['lr']})
 
             del loss
 
@@ -175,6 +196,8 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader,  valid_dat
 
             del source, target_mask
             torch.cuda.empty_cache()
+
+    tracker.stop()
 
 
 def load_data(args, device) -> Tuple[DataLoader]:
@@ -261,6 +284,15 @@ if __name__ == "__main__":
 
     # Start Tensorboard
     writer = SummaryWriter(args.savedir + '/experiment_tensorboard')
+
+    # Start Comet for the co2 tracking
+    # https://www.comet.ml
+    # Create an experiment with your api key
+    experiment = Experiment(
+        api_key="qaUluNTHjUMaGs6gOkbo4VotI",
+        project_name="sea_elegance",
+        workspace="onidaito",
+    )
 
     # Start training
     train(args, model, train_data, test_data,
