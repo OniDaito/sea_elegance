@@ -50,22 +50,19 @@ else
   echo "Running with default ops: " $baseops
 fi
 
-sigmafile=`grep "sigma" $basedir/run.conf | sed -En "s/.* --sigma-file (.*)/\1/p"`
-groundtruth=`grep "sigma" $basedir/run.conf | sed -En "s/.* --gt (.*) --save.*/\1/p"`
-
-if [ -f $basedir/run.conf ]; then
-  rm $basedir/run.conf
-fi
+#sigmafile=`grep "sigma" $basedir/run.conf | sed -En "s/.* --sigma-file (.*)/\1/p"`
+#groundtruth=`grep "sigma" $basedir/run.conf | sed -En "s/.* --gt (.*) --save.*/\1/p"`
 
 if [ -f $datadir/data.conf ]; then
   cp $datadir/data.conf $basedir/data.conf
 fi
 
 #if [ -f $sigmafile ]; then
-  cp $sigmafile $basedir/$sigmafile
-  cat $sigmafile >> $basedir/notes.txt
-  git log --format=%B -n 1 HEAD >> $basedir/notes.txt
+#  cp $sigmafile $basedir/$sigmafile
+#  cat $sigmafile >> $basedir/notes.txt
 #fi
+
+git log --format=%B -n 1 HEAD >> $basedir/notes.txt
 
 echo "Time to train."
 

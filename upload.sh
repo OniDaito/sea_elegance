@@ -32,6 +32,6 @@ subdir="${1##*/}"
 
 # Finally, perform the upload to the benjamin.computer server
 echo -e "\U1F680 " ${GREEN}"UPLOADING TO" $subdir${NC} "\U1F680"
-rsync -raz --update --progress $base oni@benjamin.computer:/srv/http/ai.benjamin.computer/public/experiments/.
-ssh oni@benjamin.computer "sudo chown -R www-data:oni /srv/http/ai.benjamin.computer/public/experiments/$subdir"
+rsync -raz --update --progress $base --exclude "model.tar" --exclude "checkpoint.pth.tar" oni@benjamin.computer:/srv/http/ai.benjamin.computer/public/experiments/.
+#ssh oni@benjamin.computer "sudo chown -R www-data:oni /srv/http/ai.benjamin.computer/public/experiments/$subdir"
 echo -e "\U1F37B"
