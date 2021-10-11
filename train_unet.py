@@ -186,7 +186,6 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader,  valid_dat
                                 loss, args, args.savedir, args.savename)
                 test(args, model, test_data, step, writer)
                 # Run a validation pass, with the scheduler
-                scheduler.step(evaluate(args, model, valid_data))
                 wandb.log({'learning_rate': optimiser.param_groups[0]['lr']})
 
             del loss
@@ -196,6 +195,7 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader,  valid_dat
 
             del source, target_mask
             torch.cuda.empty_cache()
+        scheduler.step(evaluate(args, model, valid_data))
 
     tracker.stop()
 
