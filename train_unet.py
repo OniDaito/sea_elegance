@@ -151,7 +151,7 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader,  valid_dat
 
     # CO2 tracker
     tracker = EmissionsTracker(project_name="sea_elegance", output_dir=args.savedir,
-        save_to_file=True, api_key="qaUluNTHjUMaGs6gOkbo4VotI")
+        save_to_file=True)
 
     # Weights and Biases start
     experiment = wandb.init(project='sea_elegance',
