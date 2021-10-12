@@ -200,7 +200,13 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader,  valid_dat
     tracker.stop()
 
 
-def load_data(args, device) -> Tuple[DataLoader, DataLoader]:
+def dataset_to_disk(args, dataset, filename="dataset.csv"):
+    with open(args.savedir + "/" + filename) as f:
+        for (source, target) in dataset:
+            f.write(source + ", " + target + "\n")
+
+
+def load_data(args, device) -> Tuple[DataLoader, DataLoader, DataLoader]:
     # Do we need device? Moving the data onto the device for speed?
     worm_data = WormDataset(annotations_file=args.image_path + "/dataset.csv",
                             img_dir=args.image_path,
@@ -209,12 +215,18 @@ def load_data(args, device) -> Tuple[DataLoader, DataLoader]:
     assert(dsize <= len(worm_data))
     train_dataset, test_dataset, valid_dataset = torch.utils.data.random_split(
         worm_data, [args.train_size, args.test_size, args.valid_size])
+    # Write out the datasets to files so we know which data were used in which
+    # sets for later analysis
+    dataset_to_disk(args, train_dataset, "dataset_train.csv")
+    dataset_to_disk(args, test_dataset, "dataset_test.csv")
+    dataset_to_disk(args, valid_dataset, "dataset_valid.csv")
+
     train_dataloader = DataLoader(
-        train_dataset, batch_size=args.batch_size, shuffle=True)
+        train_dataset, batch_size=args.batch_size, shuffle=True, pin_memory=True)
     test_dataloader = DataLoader(
-        test_dataset, batch_size=args.batch_size, shuffle=True)
+        test_dataset, batch_size=args.batch_size, shuffle=True, pin_memory=True)
     valid_dataloader = DataLoader(
-        valid_dataset, batch_size=args.batch_size, shuffle=True)
+        valid_dataset, batch_size=args.batch_size, shuffle=True, pin_memory=True)
     return (train_dataloader, test_dataloader, valid_dataloader)
 
 
