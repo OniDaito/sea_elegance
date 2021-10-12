@@ -201,7 +201,7 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader,  valid_dat
     # Write out the emissions to disk and terminal
     emissions: float = tracker.stop()
     with open(args.savedir + "/emissions.csv", "w") as f:
-        f.write(emissions)
+        f.write(str(emissions))
     print(emissions)
 
 
