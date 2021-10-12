@@ -150,7 +150,8 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader,  valid_dat
     model.train()
 
     # CO2 tracker
-    tracker = EmissionsTracker(project_name="sea_elegance", output_dir=args.savedir, save_to_file=True)
+    tracker = EmissionsTracker(project_name="sea_elegance", output_dir=args.savedir,
+        save_to_file=True, api_key="qaUluNTHjUMaGs6gOkbo4VotI")
 
     # Weights and Biases start
     experiment = wandb.init(project='sea_elegance',
@@ -197,7 +198,11 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader,  valid_dat
             torch.cuda.empty_cache()
         scheduler.step(evaluate(args, model, valid_data))
 
-    tracker.stop()
+    # Write out the emissions to disk and terminal
+    emissions: float = tracker.stop()
+    with open(args.savedir + "/emissions.csv", "w") as f:
+        f.write(emissions)
+    print(emissions)
 
 
 def dataset_to_disk(args, dataset, subset, filename="dataset.csv"):
