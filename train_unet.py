@@ -225,11 +225,11 @@ def load_data(args, device) -> Tuple[DataLoader, DataLoader, DataLoader]:
     dataset_to_disk(args, worm_data, valid_dataset, "dataset_valid.csv")
 
     train_dataloader = DataLoader(
-        train_dataset, batch_size=args.batch_size, shuffle=True, pin_memory=True)
+        train_dataset, batch_size=args.batch_size, shuffle=True)
     test_dataloader = DataLoader(
-        test_dataset, batch_size=args.batch_size, shuffle=True, pin_memory=True)
+        test_dataset, batch_size=args.batch_size, shuffle=True)
     valid_dataloader = DataLoader(
-        valid_dataset, batch_size=args.batch_size, shuffle=True, pin_memory=True)
+        valid_dataset, batch_size=args.batch_size, shuffle=True)
     return (train_dataloader, test_dataloader, valid_dataloader)
 
 
