@@ -25,12 +25,28 @@ import sys
 import os
 import numpy as np
 from util.loadsave import load_checkpoint, load_model
-from util.image import load_fits, save_fits, save_image, resize_3d
+from util.image import load_fits, save_fits, save_image, resize_3d, reduce_result, finalise_result
 
 
 def image_test(model, device, input_image):
-    """Test our model by loading an image and seeing how well we
-    can match it. We might need to duplicate to match the batch size.
+    """
+    Test our model by loading an image and seeing how well we
+    can match it. Make a single prediction.
+
+    Parameters
+    ----------
+    model : NetU
+        The saved, trained model
+
+    device : torch.Device
+        The device to run on (cpu or cuda)
+    
+    input_image : torch.Tensor
+        The input image as a torch Tensor
+
+    Returns
+    -------
+    None
     """
  
     # Need to call model.eval() to set certain layers to eval mode. Ones
@@ -43,16 +59,10 @@ def image_test(model, device, input_image):
         prediction = model.forward(im)
         with open('prediction.npy', 'wb') as f:
               np.save(f, prediction.detach().cpu().numpy())
+
         assert(not (torch.all(prediction == 0).item()))
-        classes = prediction.max(dim=1)[0].cpu()
-        #classes = torch.softmax(prediction, dim=1)[0]
-        assert(not (torch.all(classes == 0).item()))
-        final = classes.amax(axis=0)
-        coloured = final.amax(axis=0).cpu().numpy()
-        coloured = np.array(coloured / 4 * 255).astype(np.uint8)
-        print("Final", final.shape, final.dtype)
-        save_image(coloured, name="guess.jpg")
-        save_fits(prediction, name="guess.fits")
+        save_image(reduce_result(prediction), name="guess.jpg")
+        save_fits(finalise_result(prediction), name="guess.fits")
 
 
 if __name__ == "__main__":
@@ -83,13 +93,12 @@ if __name__ == "__main__":
         sys.exit(0)
 
     # Potentially load a different set of points
-
     if os.path.isfile(args.image):
         input_image = load_fits(args.image, dtype=torch.float32)
+        # Resize and normalise the input image, just in the same way we do with the input loader
         resized_image = resize_3d(input_image, 0.5)
         normalised_image = resized_image / 4095.0
-        save_fits(normalised_image, name="normalised.fits")
-
+        save_fits(normalised_image, name="normalised_input.fits")
         final_image = torch.tensor(normalised_image)
         image_test(model, device, final_image)
     else:

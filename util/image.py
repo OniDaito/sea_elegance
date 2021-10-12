@@ -55,7 +55,7 @@ def save_fits(img_tensor, name="ten.fits", dtype=np.float32):
 
     Returns
     -------
-    self
+    None
     """
 
     from astropy.io import fits
@@ -144,7 +144,7 @@ def reduce_source(image, axis=1) -> np.ndarray:
 
     Returns
     -------
-    torch.Tensor
+    np.ndarray
     """
 
     m = torch.max(image[0]).item()
@@ -166,7 +166,7 @@ def reduce_mask(image, axis=0) -> np.ndarray:
 
     Returns
     -------
-    torch.Tensor
+    np.ndarray
     """
     final = image[0].amax(axis=axis).cpu().unsqueeze(dim=0).numpy().astype(np.float32)
     return np.array(final / 4 * 255).astype(np.uint8)
@@ -186,11 +186,33 @@ def reduce_result(image, axis=0) -> np.ndarray:
 
     Returns
     -------
-    torch.Tensor
+    np.ndarray
     """
     first = image[0].detach().cpu().squeeze()
     mid = first
     mid = F.one_hot(mid.argmax(dim=0), 5).permute(3, 0, 1, 2)
     mid = np.argmax(mid, axis=0)* 255 / mid.shape[0]
     mid = mid.amax(dim = axis)
+    return mid.numpy().astype(np.uint8)
+
+
+def finalise_result(image) -> np.ndarray:
+    """
+    Finalise the output of the neural network - do the 
+    one hot and argmax permute stuff so we can get
+    ourselves a decent mask.
+
+    Parameters
+    ----------
+    image : torch.tensor
+        The batch of 3D input images
+
+    Returns
+    -------
+    np.ndarray
+    """
+    first = image[0].detach().cpu().squeeze()
+    mid = first
+    mid = F.one_hot(mid.argmax(dim=0), 5).permute(3, 0, 1, 2)
+    mid = np.argmax(mid, axis=0)
     return mid.numpy().astype(np.uint8)
