@@ -202,7 +202,10 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader,  valid_dat
 
 def dataset_to_disk(args, dataset, filename="dataset.csv"):
     with open(args.savedir + "/" + filename, "w") as f:
-        for (source, target) in dataset.img_targets.iloc:
+        f.write("source, target\n")
+        for idx in dataset.indices:
+            source = dataset.img_targets.iloc[idx, 0]
+            target = dataset.img_targets.iloc[idx, 1]
             f.write(source + ", " + target + "\n")
 
 
