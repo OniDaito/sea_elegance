@@ -200,10 +200,10 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader,  valid_dat
     tracker.stop()
 
 
-def dataset_to_disk(args, dataset, filename="dataset.csv"):
+def dataset_to_disk(args, dataset, subset, filename="dataset.csv"):
     with open(args.savedir + "/" + filename, "w") as f:
         f.write("source, target\n")
-        for idx in dataset.indices:
+        for idx in subset.indices:
             source = dataset.img_targets.iloc[idx, 0]
             target = dataset.img_targets.iloc[idx, 1]
             f.write(source + ", " + target + "\n")
@@ -220,9 +220,9 @@ def load_data(args, device) -> Tuple[DataLoader, DataLoader, DataLoader]:
         worm_data, [args.train_size, args.test_size, args.valid_size])
     # Write out the datasets to files so we know which data were used in which
     # sets for later analysis
-    dataset_to_disk(args, train_dataset, "dataset_train.csv")
-    dataset_to_disk(args, test_dataset, "dataset_test.csv")
-    dataset_to_disk(args, valid_dataset, "dataset_valid.csv")
+    dataset_to_disk(args, worm_data, train_dataset, "dataset_train.csv")
+    dataset_to_disk(args, worm_data, test_dataset, "dataset_test.csv")
+    dataset_to_disk(args, worm_data, valid_dataset, "dataset_valid.csv")
 
     train_dataloader = DataLoader(
         train_dataset, batch_size=args.batch_size, shuffle=True, pin_memory=True)
