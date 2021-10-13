@@ -315,6 +315,7 @@ if __name__ == "__main__":
     if args.resume:
         model = load_model(args.savedir + "/model.tar", device=device)
         model, optimiser, epoch, batch_idx, loss, args = load_checkpoint(model, args.savedir, "checkpoint.pth.tar", device=device)
+        print("Loaded a previous model - loss, epoch, batch-idx", loss, epoch, batch_idx)
 
     # Start training
     train(args, model, train_data, test_data,
