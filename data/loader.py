@@ -53,6 +53,7 @@ def make_sparse(input_data: np.ndarray, device):
 
 class WormDataset(Dataset):
     def __init__(self, annotations_file, img_dir, transform=None, target_transform=None, device='cpu'):
+        super().__init__()
         self.img_targets = pd.read_csv(annotations_file, names=["source", "mask"],
                     converters = {'source' : strip,
                                     'mask' : strip})

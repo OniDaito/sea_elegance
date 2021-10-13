@@ -26,7 +26,7 @@ import matplotlib.pyplot as plt
 from torch.utils.tensorboard import SummaryWriter
 from torch import autograd
 from net.dice_score import dice_loss, multiclass_dice_coeff
-from util.loadsave import save_checkpoint, save_model
+from util.loadsave import save_checkpoint, save_model, load_checkpoint, load_model
 from util.image import reduce_source, reduce_mask, reduce_result
 from codecarbon import EmissionsTracker
 import wandb
@@ -139,9 +139,10 @@ def evaluate(args, model, data: DataLoader):
     model.train()
     return loss_total / num_batches
 
-
+# TODO - eventually we'll need to be able to resume from a step as well as an epoch but we'd have to save the 
+# dataloader step so that might not quite work.
 def train(args, model, train_data: DataLoader, test_data: DataLoader,  valid_data: DataLoader,
-          optimiser, scheduler, writer: SummaryWriter):
+          optimiser, scheduler, writer: SummaryWriter, start_epoch=0):
     pytorch_total_params = sum(p.numel()
                                for p in model.parameters() if p.requires_grad)
     print("Total trainable params:", pytorch_total_params)
@@ -163,7 +164,7 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader,  valid_dat
     tracker.start()
 
     # Now start the training proper
-    for epoch in range(args.epochs):
+    for epoch in range(start_epoch, args.epochs):
         for batch_idx, (source, target_mask) in enumerate(train_data):
             optimiser.zero_grad()
             result = model(source)
@@ -255,6 +256,8 @@ if __name__ == "__main__":
                         help='learning rate (default: 0.001)')
     parser.add_argument('--no-cuda', action='store_true', default=False,
                         help='disables CUDA training')
+    parser.add_argument('--resume', action='store_true', default=False,
+                        help='continue from a previous run.')
     parser.add_argument('--seed', type=int, default=1, metavar='S',
                         help='random seed (default: 1)')
     parser.add_argument('--log-interval', type=int, default=10,
@@ -265,12 +268,9 @@ if __name__ == "__main__":
     parser.add_argument("--savename", default="checkpoint.pth.tar",
                         help="The name for checkpoint save file.",
                         )
-    parser.add_argument(
-        "--save-interval",
-        type=int,
-        default=100,
-        help="how many batches to wait before saving.",
-    )
+    parser.add_argument("--save-interval", type=int, default=100,
+                        help="how many batches to wait before saving.",
+                        )
     parser.add_argument('--image-path', default="",
                         help='Directory of images for training.')
     parser.add_argument('--train-size', type=int, default=22,
@@ -310,9 +310,15 @@ if __name__ == "__main__":
         workspace="onidaito",
     )
 
+    epoch = 0 
+
+    if args.resume:
+        model = load_model(args.savedir + "/model.tar", device=device)
+        model, optimiser, epoch, batch_idx, loss, args = load_checkpoint(model, args.savedir, "checkpoint.pth.tar", device=device)
+
     # Start training
     train(args, model, train_data, test_data,
-          valid_data, optimiser, scheduler, writer)
+          valid_data, optimiser, scheduler, writer, epoch)
 
     # Final things to write to tensorboard
     #images, _, _ = next(iter(train_data))
