@@ -15,7 +15,7 @@ import torch.optim as optim
 
 
 def save_checkpoint(
-    model, optimiser, epoch, batch_idx, loss, args, savedir, savename
+    model, optimiser, epoch, batch_idx, loss, args, learning_rate, savedir, savename
 ):
     """
     Saving a checkpoint out along with optimizer and other useful
@@ -36,6 +36,8 @@ def save_checkpoint(
         The current loss
     args : args object
         The args object this model was running with
+    learning_rate : float
+        The learning rate currently, as set by the scheduler
     savedir : str
         The path to save to
     savename: str
@@ -55,6 +57,7 @@ def save_checkpoint(
             "args": args,
             "optimiser_state_dict": optimiser.state_dict(),
             "loss": loss,
+            "learning_rate" : learning_rate
         },
         savedir + "/" + savename,
     )
@@ -113,8 +116,9 @@ def load_checkpoint(
     args = checkpoint["args"]
     optimiser = optim.Adam(model.parameters(), lr=args.lr, weight_decay=1e-5, eps=1e-3)
     model = model.to(device)
+    learning_rate = checkpoint['learning_rate']
 
-    return (model, optimiser, epoch, batch_idx, loss, args)
+    return (model, optimiser, epoch, batch_idx, loss, args, learning_rate)
 
 
 def load_model(path, device="cpu"):

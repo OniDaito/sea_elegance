@@ -170,7 +170,6 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader,  valid_dat
             result = model(source)
             target_mask = target_mask.to(device=result.device, dtype=torch.long)
             # TODO not sure the permute is right here?
-            #loss = loss_func(result, target_mask)
             loss = loss_func(result, target_mask) + dice_loss(F.softmax(result, dim=1).float(),
                                                                 F.one_hot(target_mask, model.n_classes).permute(
                                                                     0, 4, 1, 2, 3).float(),
@@ -185,7 +184,7 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader,  valid_dat
           
             if batch_idx % args.log_interval == 0 and batch_idx != 0:
                 save_checkpoint(model, optimiser, epoch, batch_idx,
-                                loss, args, args.savedir, args.savename)
+                                loss, args, optimiser.param_groups[0]['lr'], args.savedir, args.savename)
                 test(args, model, test_data, step, writer)
                 # Run a validation pass, with the scheduler
                 wandb.log({'learning_rate': optimiser.param_groups[0]['lr']})
