@@ -76,7 +76,7 @@ class WormDataset(Dataset):
         with fits.open(img_path) as w:
             hdul = w[0].data.byteswap().newbyteorder()
             source_image = np.array(hdul).astype("int16")
-            source_image = nd.interpolation.zoom(source_image, zoom=0.5)
+            #source_image = nd.interpolation.zoom(source_image, zoom=0.5)
             source_image = source_image.astype(float) / 4095.0
             source_image = source_image.astype(np.float32)
             source_image = np.expand_dims(source_image, axis=0)
@@ -94,8 +94,8 @@ class WormDataset(Dataset):
             # everything up, so we add a clamp. This might not be ideal and could break
             # things in the future, so we'll need to add a 3D resize in the dataset creation
             # in the wiggle project.
-            target_mask = nd.interpolation.zoom(target_mask, zoom=0.5)
-            target_mask = np.clip(target_mask, 0, 4)
+            #target_mask = nd.interpolation.zoom(target_mask, zoom=0.5)
+            #target_mask = np.clip(target_mask, 0, 4)
 
             assert(np.all(target_mask >= 0))
             assert(np.all(target_mask < 5))
