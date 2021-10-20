@@ -92,12 +92,10 @@ if __name__ == "__main__":
         print("--load must point to a run directory.")
         sys.exit(0)
 
-    # Potentially load a different set of points
+    # Load the image we want to segment
     if os.path.isfile(args.image):
         input_image = load_fits(args.image, dtype=torch.float32)
-        # Resize and normalise the input image, just in the same way we do with the input loader
-        resized_image = resize_3d(input_image, 0.5)
-        normalised_image = resized_image / 4095.0
+        normalised_image = input_image / 4095.0
         save_fits(normalised_image, name="normalised_input.fits")
         final_image = torch.tensor(normalised_image)
         image_test(model, device, final_image)
