@@ -19,6 +19,7 @@ from astropy.io import fits
 from util.loadsave import load_checkpoint, load_model
 from util.image import load_fits, save_fits, save_image, resize_3d, reduce_result, finalise_result
 
+
 def strip(text):
     try:
         return text.strip()
@@ -43,11 +44,11 @@ def visualise_scores(scores: list):
     print("Mean Overlay Score", mean_score, "over", num_scores, "images, with std dev", np.std(m))
 
     classes = np.array([s['classes'] for s in scores])
-    for cdx in range(5):
+    for cdx in range(3):
         print("Class", cdx)
         scores = np.array([c[cdx] for c in classes])
         means = []
-        for tdx in range(5):
+        for tdx in range(3):
             means.append(np.mean([s[tdx] for s in scores]))
         print(means)
 
@@ -59,25 +60,18 @@ def compare_masks(original: np.ndarray, predicted:  np.ndarray):
     l1 = np.sum(l1)
 
     # Mask overlay score
-    #m = np.where(original > 0, 1, 0)
-    #n = np.where(predicted > 0, 1, 0)
-
-    #p = np.where(original == 0, 1, 0)
-    #q = np.where(predicted == 0, 1, 0)
-
-    #overlay = (np.sum(m * n) + np.sum(p * q)) / (np.sum(m) + np.sum(p)) * 100
     tsize = np.shape(original)
     tsize = tsize[0] * tsize[1] * tsize[2]
     overlay = np.sum(np.where(original == predicted, 1, 0)) / tsize * 100
 
-    # Class accuracies 0,1,2,3 and 4
+    # Class accuracies 0,1,2
     class_accuracy = []
 
-    for cid in range(5):
+    for cid in range(3):
         m = np.where(original == cid, 1, 0)
         scores = []
 
-        for tid in range(5):
+        for tid in range(3):
             n = np.where(predicted == tid, 1, 0)
             match = np.sum(m * n) / np.sum(m) * 100
             scores.append(match)
