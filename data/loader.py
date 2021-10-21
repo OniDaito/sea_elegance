@@ -90,15 +90,8 @@ class WormDataset(Dataset):
             # We can keep the masks as ordinals and not split into a number of dimensions
             hdul = w[0].data.byteswap().newbyteorder()
             target_mask = np.array(hdul).astype("int8")
-            # nd interpolation will do 3D BUT it invents new classes (-1 and 5) which messes
-            # everything up, so we add a clamp. This might not be ideal and could break
-            # things in the future, so we'll need to add a 3D resize in the dataset creation
-            # in the wiggle project.
-            #target_mask = nd.interpolation.zoom(target_mask, zoom=0.5)
-            #target_mask = np.clip(target_mask, 0, 4)
-
             assert(np.all(target_mask >= 0))
-            assert(np.all(target_mask < 5))
+            assert(np.all(target_mask < 3))
             target_mask = target_mask.astype(np.float32)
             # target_mask_final = make_sparse(target_mask, self.device)
             target_mask_final = torch.tensor(target_mask, dtype=torch.float32, device=self.device)

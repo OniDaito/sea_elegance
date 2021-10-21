@@ -51,6 +51,7 @@ def visualise_scores(scores: list):
             means.append(np.mean([s[tdx] for s in scores]))
         print(means)
 
+
 def compare_masks(original: np.ndarray, predicted:  np.ndarray):
     # L1 Sum absolute differences
     l1 = np.subtract(original, predicted)

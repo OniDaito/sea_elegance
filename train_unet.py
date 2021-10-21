@@ -215,7 +215,7 @@ if __name__ == "__main__":
                         help='The size of the training set (default: 100)')
     parser.add_argument('--test-size', type=int, default=5,
                         help='The size of the training set (default: 20)')
-    parser.add_argument('--valid-size', type=int, default=0,
+    parser.add_argument('--valid-size', type=int, default=2,
                         help='The size of the training set (default: 10)')
 
     args = parser.parse_args()
