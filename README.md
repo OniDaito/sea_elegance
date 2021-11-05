@@ -32,3 +32,8 @@ Running a model with an image to make a prediction
 
 ## Energy Usage
 [Code Carbon](https://github.com/mlco2/codecarbon) is also used as part of our reporting on carbon emissions and energy usage.
+
+## Visualisation
+
+Using the latest pyglet
+    pip install --upgrade --user https://github.com/pyglet/pyglet/archive/master.zip

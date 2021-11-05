@@ -15,15 +15,20 @@ from PIL import Image
 from scipy import ndimage as nd
 
 
-def save_image(img_tensor, name="ten.jpg"):
+def save_image(img_tensor, name="ten.jpg", type="JPEG"):
     """
     Save a particular tensor to an image. We add a normalisation here
     to make sure it falls in range.
 
     Parameters
     ----------
+    img_tensor: pytorch.Tensor or numpy.ndarray
+
     filename : str
         The path to the CSV file.
+
+    type : str
+        What image type to save as
 
     Returns
     -------
@@ -34,13 +39,13 @@ def save_image(img_tensor, name="ten.jpg"):
         mm = torch.max(img_tensor)
         img_tensor = img_tensor / mm
         img = Image.fromarray(np.uint8(img_tensor.numpy() * 255))
-        img.save(name, "JPEG")
+        img.save(name, type, compress_level=0)
     else:
         # Assume a numpy array
         mm = np.max(img_tensor)
         img_tensor = img_tensor / mm
         img = Image.fromarray(np.uint8(img_tensor * 255))
-        img.save(name, "JPEG")
+        img.save(name, type, compress_level=0)
 
 
 def save_fits(img_tensor, name="ten.fits", dtype=np.float32):
