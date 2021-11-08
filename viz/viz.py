@@ -1,6 +1,4 @@
-from numpy.core.fromnumeric import transpose
-import pyglet
-from pyglet.gl import glEnable, GL_DEPTH_TEST, GL_CULL_FACE
+
 import argparse
 import numpy as np
 import math
@@ -9,26 +7,56 @@ import h5py
 import os
 import numba as nb
 
-window = pyglet.window.Window(width=720, height=480, resizable=True)
-window.projection = pyglet.math.Mat4().perspective_projection(0, 720, 0, 480, z_near=0.1, z_far=255)
-
-label = pyglet.text.Label('Hello, world',
-                          font_name='Times New Roman',
-                          font_size=36,
-                          x=window.width//2, y=window.height//2,
-                          anchor_x='center', anchor_y='center')
-
 MAX_COLOUR = 2000
 WORLD_SCALE = 400
 
-@window.event
-def on_draw():
-    window.clear()
-    #pyglet.graphics.draw(int(len(triangles) / 3), pyglet.gl.GL_TRIANGLES,
-    #                     ('v3f', triangles))
-    
-    triangles.draw(pyglet.gl.GL_TRIANGLES)
-    #label.draw()
+
+def save_ply(path, vertices, colours):
+    """
+    Save a basic ascii ply file that has triangles and colour.
+
+    Parameters
+    ----------
+    path : str
+        A path and filename for the save file
+    vertices : list
+        A list of vertices, every 3 is a triangle. A flat
+        triangle list.
+    colours : list
+        A list of RGB colours, 255.
+
+    Returns
+    -------
+    None
+
+    """
+
+    with open(path, "w") as f:
+        f.write("ply\n")
+        f.write("format ascii 1.0\n")
+        f.write("comment VCGLIB generated\n")
+        f.write("element vertex " + str(len(vertices) / 3) + "\n")
+        f.write("property float x\n")
+        f.write("property float y\n")
+        f.write("property float z\n")
+        f.write("element face " + str(int(len(vertices) / 9)) + "\n")
+        #f.write("element face " + str(0) + "\n")
+
+        f.write("property list uchar int vertex_indices\n")
+        f.write("end_header\n")
+
+        # Vertex list
+        for vidx in range(0, len(vertices), 3):
+            v = vertices[vidx]
+            f.write(str(round(v, 4)) + " ")
+            v = vertices[vidx + 1]
+            f.write(str(round(v, 4)) + " ")
+            v = vertices[vidx + 2]
+            f.write(str(round(v, 4)) + "\n")
+        
+        # Face list
+        for vidx in range(0, int(len(vertices) / 3), 3):
+            f.write("3 " + str(vidx) + " " + str(vidx + 1) + " " + str(vidx + 2) + "\n")
 
 
 def load_fits(path, dtype=np.float32):
@@ -44,6 +72,7 @@ def load_fits(path, dtype=np.float32):
     torch.Tensor
     """
     from astropy.io import fits
+    global MAX_COLOUR
     hdul = fits.open(path)
     data = np.array(hdul[0].data).astype(dtype)
     MAX_COLOUR = np.amax(data)
@@ -98,7 +127,7 @@ def get_threshold(data, threshold):
     for m in range(data.shape[0]):
         for n in range(data.shape[1]):
             for p in range(data.shape[2]):
-                if data[m, n, p] >= threshold:
+                if data[m, n, p] >= 300:
                     sim_vec.append((m, n, p))
 
     return sim_vec
@@ -106,6 +135,8 @@ def get_threshold(data, threshold):
 
 @nb.jit(nopython=True, parallel=False)
 def interp_edge(vertvals, e, x, y, z, cutoff):
+    global MAX_COLOUR
+
     # First Vertex Positions
     v0 = [0.0, 0.0, 0.0]
     vid0 = tables.edge_to_verts[e * 2]
@@ -122,12 +153,22 @@ def interp_edge(vertvals, e, x, y, z, cutoff):
 
     diff = math.fabs(vertvals[vid0] - vertvals[vid1])
     assert(diff != 0)
-    vr = math.fabs(vertvals[0] - cutoff) / diff
+    vr = math.fabs(vertvals[vid0] - cutoff) / diff
+    assert(vr <= 1.0 and vr >= 0.0)
+    dp = v1
+    dp[0] -= v0[0]
+    dp[1] -= v0[1]
+    dp[2] -= v0[2]
 
     vf = v0
-    vf[0] += (x + v1[0] * vr) * WORLD_SCALE - 1.0
-    vf[1] += (y + v1[1] * vr) * WORLD_SCALE - 1.0
-    vf[2] += (z + v1[2] * vr) * WORLD_SCALE - 1.0
+ 
+    vf[0] += dp[0] * vr + x
+    vf[1] += dp[1] * vr + y # Remember, Z is up in this system
+    vf[2] += dp[2] * vr + z
+
+    vf[0] *= WORLD_SCALE - 1.0
+    vf[1] *= WORLD_SCALE - 1.0
+    vf[2] *= WORLD_SCALE - 1.0
 
     # TODO For now, just equally split the colour. Eventually properly interpolate
     c = vertvals[vid0] / MAX_COLOUR * 255
@@ -194,6 +235,7 @@ def cuuubes(data, cutoff=200.0):
             # Flat vertex list
             for i in range(3):
                 final_tris.append(v0[i])
+
             for i in range(4):
                 final_colours.append(c0[i])
             
@@ -222,7 +264,7 @@ if __name__ == "__main__":
                         help='Path to a 3D fits image.')
     parser.add_argument("--rez", type=int, default=800,
                         help="The resolution along each axis.")
-    parser.add_argument('--cutoff', type=float, default=200.0, metavar='LR',
+    parser.add_argument('--cutoff', type=float, default=600.0,
                         help='The cutoff value for our cuuuubes.')
 
     args = parser.parse_args()
@@ -230,11 +272,5 @@ if __name__ == "__main__":
     data = load_fits(args.image)
     data = size_image(data, args.rez)
     tris, colours = cuuubes(data, args.cutoff)
-    triangles = pyglet.graphics.vertex_list(int(len(tris) / 3), ('position3f', tris), ('colors4f', colours))
-
-    print(tris[0:3])
-
-    glEnable(GL_DEPTH_TEST)
-    glEnable(GL_CULL_FACE)
-
-    pyglet.app.run()
+   
+    save_ply("vis.ply", tris, colours)
