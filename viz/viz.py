@@ -39,9 +39,10 @@ def save_ply(path, vertices, colours):
         f.write("property float x\n")
         f.write("property float y\n")
         f.write("property float z\n")
+        f.write("property uchar red\n")
+        f.write("property uchar green\n")
+        f.write("property uchar blue\n")
         f.write("element face " + str(int(len(vertices) / 9)) + "\n")
-        #f.write("element face " + str(0) + "\n")
-
         f.write("property list uchar int vertex_indices\n")
         f.write("end_header\n")
 
@@ -52,8 +53,14 @@ def save_ply(path, vertices, colours):
             v = vertices[vidx + 1]
             f.write(str(round(v, 4)) + " ")
             v = vertices[vidx + 2]
-            f.write(str(round(v, 4)) + "\n")
-        
+            f.write(str(round(v, 4)) + " ")
+            c = int(colours[vidx])
+            f.write(str(c) + " ")
+            c = int(colours[vidx + 1])
+            f.write(str(c) + " ")
+            c = int(colours[vidx + 2])
+            f.write(str(c) + "\n")
+
         # Face list
         for vidx in range(0, int(len(vertices) / 3), 3):
             f.write("3 " + str(vidx) + " " + str(vidx + 1) + " " + str(vidx + 2) + "\n")
@@ -124,11 +131,30 @@ def size_image(data: np.ndarray, rez=800):
 def get_threshold(data, threshold):
     sim_vec = []
 
-    for m in range(data.shape[0]):
-        for n in range(data.shape[1]):
-            for p in range(data.shape[2]):
-                if data[m, n, p] >= 300:
-                    sim_vec.append((m, n, p))
+    for z in range(data.shape[0] - 1):
+        for y in range(data.shape[1] - 1):
+            for x in range(data.shape[2] - 1):
+                v0 = data[z][y][x]
+                v1 = data[z + 1][y][x]
+                v2 = data[z + 1][y][x + 1]
+                v3 = data[z][y][x + 1]
+                v4 = data[z][y + 1][x]
+                v5 = data[z + 1][y + 1][x]
+                v6 = data[z + 1][y + 1][x + 1]
+                v7 = data[z][y + 1][x + 1]
+
+                c0 = int(v0 >= threshold)
+                c1 = int(v1 >= threshold)
+                c2 = int(v2 >= threshold)
+                c3 = int(v3 >= threshold)
+                c4 = int(v4 >= threshold)
+                c5 = int(v5 >= threshold)
+                c6 = int(v6 >= threshold)
+                c7 = int(v7 >= threshold)
+                lookup = c7 << 7 | c6 << 6 | c5 << 5 | c4 << 4 | c3 << 3 | c2 << 2 | c1 << 1 | c0
+
+                if lookup != 0 and lookup != 255:
+                    sim_vec.append(([z, y, x], lookup,  [v0, v1, v2, v3, v4, v5, v6, v7]))
 
     return sim_vec
 
@@ -159,60 +185,27 @@ def interp_edge(vertvals, e, x, y, z, cutoff):
     dp[0] -= v0[0]
     dp[1] -= v0[1]
     dp[2] -= v0[2]
-
     vf = v0
- 
     vf[0] += dp[0] * vr + x
-    vf[1] += dp[1] * vr + y # Remember, Z is up in this system
+    vf[1] += dp[1] * vr + y
     vf[2] += dp[2] * vr + z
 
     vf[0] *= WORLD_SCALE - 1.0
     vf[1] *= WORLD_SCALE - 1.0
     vf[2] *= WORLD_SCALE - 1.0
 
-    # TODO For now, just equally split the colour. Eventually properly interpolate
-    c = vertvals[vid0] / MAX_COLOUR * 255
-    return (vf, (c, c, c, 0.5))
+    c = (vertvals[vid0] * (1.0 - vr) + vertvals[vid1] * vr) / MAX_COLOUR * 255
+    return (vf, (c, c, c))
 
 
 # Loop over the indices and find the cubes. Return list of tris in x,y,z verts 0 to 2
 @nb.jit(nopython=True, parallel=False)
 def cuuubes(data, cutoff=200.0):
-    indices = get_threshold(data, cutoff)
-    print("Num Voxels to Check", len(indices))
-    test_cubes = []
+    test_cubes = get_threshold(data, cutoff)
+   
+    print("Test Cubes complete.")
     final_tris = []
     final_colours = []
-
-    # TODO - potential speedup if we choose the smallest of either < or > than threshold
-
-    # Loop through and make some cubes
-    for z, y, x in indices:
-        # Sample each point and combine to a byte
-        v0 = data[z][y][x]
-        v1 = data[z + 1][y][x]
-        v2 = data[z + 1][y][x + 1]
-        v3 = data[z][y][x + 1]
-        v4 = data[z][y + 1][x]
-        v5 = data[z + 1][y + 1][x]
-        v6 = data[z + 1][y + 1][x + 1]
-        v7 = data[z][y + 1][x + 1]
-
-        c0 = int(v0 >= cutoff)
-        c1 = int(v1 >= cutoff)
-        c2 = int(v2 >= cutoff)
-        c3 = int(v3 >= cutoff)
-        c4 = int(v4 >= cutoff)
-        c5 = int(v5 >= cutoff)
-        c6 = int(v6 >= cutoff)
-        c7 = int(v7 >= cutoff)
-        lookup = c7 << 7 | c6 << 6 | c5 << 5 | c4 << 4 | c3 << 3 | c2 << 2 | c1 << 1 | c0
-
-        if lookup != 0 and lookup != 255:
-            test_cubes.append(
-                ([z, y, x], lookup, [v0, v1, v2, v3, v4, v5, v6, v7]))
-
-    print("Test Cubes complete.")
 
     for tcube in test_cubes:
         lookup = tcube[1]
@@ -236,19 +229,19 @@ def cuuubes(data, cutoff=200.0):
             for i in range(3):
                 final_tris.append(v0[i])
 
-            for i in range(4):
+            for i in range(3):
                 final_colours.append(c0[i])
             
             for i in range(3):
                 final_tris.append(v1[i])
 
-            for i in range(4):
+            for i in range(3):
                 final_colours.append(c1[i])
 
             for i in range(3):
                 final_tris.append(v2[i])
 
-            for i in range(4):
+            for i in range(3):
                 final_colours.append(c2[i])
 
     print("Triangles computed.")
@@ -262,9 +255,11 @@ if __name__ == "__main__":
         description='Pyglet based visualisation for our 3D fits images.')
     parser.add_argument('--image', default="../test/images/raw.fits",
                         help='Path to a 3D fits image.')
+    parser.add_argument('--savepath', default="vis.ply",
+                        help='Path to a 3D PLY file we are saving')
     parser.add_argument("--rez", type=int, default=800,
                         help="The resolution along each axis.")
-    parser.add_argument('--cutoff', type=float, default=600.0,
+    parser.add_argument('--cutoff', type=float, default=400.0,
                         help='The cutoff value for our cuuuubes.')
 
     args = parser.parse_args()
@@ -272,5 +267,4 @@ if __name__ == "__main__":
     data = load_fits(args.image)
     data = size_image(data, args.rez)
     tris, colours = cuuubes(data, args.cutoff)
-   
-    save_ply("vis.ply", tris, colours)
+    save_ply(args.savepath, tris, colours)
