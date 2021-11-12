@@ -51,10 +51,16 @@ def save_image(img_tensor, name="ten.jpg", type="JPEG"):
 def save_fits(img_tensor, name="ten.fits", dtype=np.float32):
     """
     Save a particular tensor to an image. We add a normalisation here
-    to make sure it falls in range. This version saves as a
+    to make sure it falls in range.
+
+    For some reason, we used to flip the tensor coming in. I don't do
+    that now.
 
     Parameters
     ----------
+    img_tensor : np.ndarry or torch.Tensor
+        The data to save as an image.
+
     filename : str
         The path to the CSV file.
 
@@ -66,7 +72,7 @@ def save_fits(img_tensor, name="ten.fits", dtype=np.float32):
     from astropy.io import fits
 
     if hasattr(img_tensor, "detach"):
-        img_tensor = np.flipud(img_tensor.detach().cpu().numpy())
+        img_tensor = img_tensor.detach().cpu().numpy()
     img_tensor = img_tensor.astype(dtype)
     hdu = fits.PrimaryHDU(img_tensor)
     hdul = fits.HDUList([hdu])

@@ -119,8 +119,8 @@ def size_image(data: np.ndarray, rez=800):
         pr = int(math.ceil((rez - d) / 2))
         padding.append((pl, pr))
 
-    os.remove("./cache.hdf5")
-    hdf5_store = h5py.File("./cache.hdf5", "a")
+    #os.remove("./cache.hdf5")
+    #hdf5_store = h5py.File("./cache.hdf5", "a")
     padded = np.pad(data, padding)
     #cx = hdf5_store.create_dataset("data", padded.shape, compression="gzip", data=padded)
 
@@ -190,9 +190,9 @@ def interp_edge(vertvals, e, x, y, z, cutoff):
     vf[1] += dp[1] * vr + y
     vf[2] += dp[2] * vr + z
 
-    vf[0] *= WORLD_SCALE - 1.0
-    vf[1] *= WORLD_SCALE - 1.0
-    vf[2] *= WORLD_SCALE - 1.0
+    vf[0] = (vf[0] * WORLD_SCALE) - 1.0
+    vf[1] = (vf[1] * WORLD_SCALE) - 1.0
+    vf[2] = (vf[2] * WORLD_SCALE) - 1.0
 
     c = (vertvals[vid0] * (1.0 - vr) + vertvals[vid1] * vr) / MAX_COLOUR * 255
     return (vf, (c, c, c))
@@ -224,6 +224,11 @@ def cuuubes(data, cutoff=200.0):
             v0, c0 = interp_edge(verts, e0, x, y, z, cutoff)
             v1, c1 = interp_edge(verts, e1, x, y, z, cutoff)
             v2, c2 = interp_edge(verts, e2, x, y, z, cutoff)
+
+            # We invert Z as the FITS Z starts from the top of the stack down
+            v0[2] = v0[2] * -1
+            v1[2] = v1[2] * -1
+            v2[2] = v2[2] * -1
 
             # Flat vertex list
             for i in range(3):

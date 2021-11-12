@@ -24,7 +24,7 @@ Navigate to:
 ## Running a prediction
 Running a model with an image to make a prediction
 
-    python run.py --load ../runs/wormz_2021_10_04  --image /phd/wormz/queelim/dataset_24_09_2021/00618_layered.fits
+    python run.py --load ../runs/wormz_2021_10_04  --image /phd/wormz/queelim/dataset_21_10_2021/00618_layered.fits
 
 ## Evaluation
 

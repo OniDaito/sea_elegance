@@ -20,7 +20,7 @@ import matplotlib.cm
 from astropy.io import fits
 import torch.nn.functional as F
 from util.loadsave import load_checkpoint, load_model
-from util.image import load_fits, reduce_source, save_image, reduce_result, finalise_result
+from util.image import load_fits, save_image, save_fits, finalise_result
 
 
 def strip(text):
@@ -210,6 +210,7 @@ def mask_check(model, device, save_path, valid_set, save=False):
                 mid = prediction.detach().cpu().squeeze()
                 mid = F.one_hot(mid.argmax(dim=0), 3).permute(3, 0, 1, 2)
                 mid = np.argmax(mid, axis=0)
+                save_fits(mid, "./eval_" + str(idx-1) + ".fits")
                 pred = mid.amax(dim=0).numpy()
                 mask = mask_image.amax(axis=0).cpu().squeeze().numpy()
                 save_mixed_image(pred, mask, "./eval_" + str(idx-1) + ".png")  
