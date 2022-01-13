@@ -58,7 +58,7 @@ def image_test(model, device, input_image):
         im = im.to(device)
         prediction = model.forward(im)
         with open('prediction.npy', 'wb') as f:
-              np.save(f, prediction.detach().cpu().numpy())
+            np.save(f, prediction.detach().cpu().numpy())
 
         assert(not (torch.all(prediction == 0).item()))
         save_image(reduce_result(prediction), name="guess.jpg")

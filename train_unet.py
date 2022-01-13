@@ -211,12 +211,14 @@ if __name__ == "__main__":
                         )
     parser.add_argument('--image-path', default="",
                         help='Directory of images for training.')
-    parser.add_argument('--train-size', type=int, default=22,
+    parser.add_argument('--train-size', type=int, default=100,
                         help='The size of the training set (default: 100)')
-    parser.add_argument('--test-size', type=int, default=5,
+    parser.add_argument('--test-size', type=int, default=20,
                         help='The size of the training set (default: 20)')
-    parser.add_argument('--valid-size', type=int, default=2,
+    parser.add_argument('--valid-size', type=int, default=10,
                         help='The size of the training set (default: 10)')
+    parser.add_argument('--log-interval', type=int, default=50,
+                        help='Number of steps to perform before logging (default: 50)')
 
     args = parser.parse_args()
     assert(args.image_path != "")
@@ -237,9 +239,8 @@ if __name__ == "__main__":
         optimiser, 'max', patience=2)  # goal: maximize Dice score
 
     # Start Tensorboard
-    writer = SummaryWriter(args.savedir + '/experiment_tensorboard')
-
-    epoch = 0 
+    writer = SummaryWriter(args.savedir + '/tensorboard')
+    epoch = 0
 
     if args.resume:
         model = load_model(args.savedir + "/model.tar", device=device)
@@ -251,6 +252,6 @@ if __name__ == "__main__":
           valid_data, optimiser, scheduler, writer, epoch)
 
     # Final things to write to tensorboard
-    #images, _, _ = next(iter(train_data))
-    #writer.add_graph(model, images)
+    images, _, _ = next(iter(train_data))
+    writer.add_graph(model, images)
     writer.close()

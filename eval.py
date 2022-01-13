@@ -15,6 +15,7 @@ import sys
 import os
 import numpy as np
 import pandas as pd
+import scipy.stats
 import matplotlib
 import matplotlib.cm
 from astropy.io import fits
@@ -179,6 +180,9 @@ def mask_check(model, device, save_path, valid_set, save=False):
 
     device : torch.Device
         The device to run on (cpu or cuda)
+    
+    save_path : str
+        Path to the saved run
 
     valid_set : dictionary
         Two lists of input images and target pairs. We will check
@@ -223,6 +227,122 @@ def mask_check(model, device, save_path, valid_set, save=False):
     visualise_scores(scores)
 
 
+def fluoro_check(model, device, valid_set, save_path, data_dir):
+    """
+    Test our model by generating the masks for the valid set then
+    using these masks to count the flouresence scores. Compare these
+    scores to the ones from QueeLim's real data.
+
+    Parameters
+    ----------
+    model : NetU
+        The saved, trained model
+
+    device : torch.Device
+        The device to run on (cpu or cuda)
+
+    valid_set : dictionary
+        Two lists of input images and target pairs. We will check
+        them over and produce some stats
+
+    save_path : str
+        Path to the saved run
+
+    data_dir : str
+        Path to the dataset
+
+    Returns
+    -------
+    None
+    """
+
+    # Need to call model.eval() to set certain layers to eval mode. Ones
+    # like dropout and what not
+    scores_original = pd.read_csv(data_dir + "/fluoro.csv", names=["id", "asi1", "asi2", "asj1", "asj2", "file"],
+                    converters = {'file' : strip})
+    final_scores = []
+
+    for idx in range(1, int((valid_set.size) / 2)):
+        source_path = data_dir + "/" + valid_set.iloc[idx, 0]
+        mask_path = data_dir + "/" + valid_set.iloc[idx, 1]
+
+        tokens = valid_set.iloc[idx, 0].split("_")
+        file_id = int(tokens[0])
+        asi1 = scores_original.iloc[file_id - 1, 1]
+        asi2 = scores_original.iloc[file_id - 1, 2]
+        asj1 = scores_original.iloc[file_id - 1, 3]
+        asj2 = scores_original.iloc[file_id - 1, 4]
+
+        og_asi = asi1 + asi2
+        og_asj = asj1 + asj2
+
+        source_image = load_image(source_path, normalise=True)
+        source_base = load_image(source_path, normalise=False)
+        mask_image = load_image(mask_path, normalise=False, dtype=torch.int64)
+
+        with torch.no_grad():
+            model.eval()
+            im = source_image.unsqueeze(dim=0).unsqueeze(dim=0)
+            im = im.to(device)
+            prediction = model.forward(im)
+
+            mid = prediction.detach().cpu().squeeze()
+            mid = F.one_hot(mid.argmax(dim=0), 3)
+            # Class 1
+            c1 = mid[:, :, :, 1].squeeze()
+            c1_count = float(torch.sum(c1 * source_base))
+
+            # Class 2
+            c2 = mid[:, :, :, 2].squeeze()
+            c2_count = float(torch.sum(c2 * source_base))
+
+            # Now use the OG masks
+
+            # Class 1
+            mid = F.one_hot(mask_image, 3)
+            c1 = mid[:, :, :, 1].squeeze()
+            m1_count = float(torch.sum(c1 * source_base))
+
+            # Class 2
+            c2 = mid[:, :, :, 2].squeeze()
+            m2_count = float(torch.sum(c2 * source_base))
+
+            final_scores.append(((og_asi, og_asj), (c1_count, c2_count), (m1_count, m2_count)))
+
+    print(final_scores)
+
+    
+    asi_x = [x[1][0] for x in final_scores]
+    asi_y = [x[2][0] for x in final_scores]
+
+    asj_x = [x[1][1] for x in final_scores]
+    asj_y = [x[2][1] for x in final_scores]
+
+    asi_r = np.corrcoef(asi_x, asi_y)
+    asj_r = np.corrcoef(asj_x, asj_y)
+
+    print("Correlations", asi_r, asj_r)
+
+    print("ASI")
+    print("Spearman", scipy.stats.spearmanr(asi_x, asi_y))
+    print("Kendall", scipy.stats.kendalltau(asi_x, asi_y))
+
+    print("ASJ")
+    print("Spearman", scipy.stats.spearmanr(asj_x, asj_y))
+    print("Kendall", scipy.stats.kendalltau(asj_x, asj_y))
+
+    og_asi = [x[0][0] for x in final_scores]
+    og_asj = [x[0][1] for x in final_scores]
+
+    print("ASI with OG")
+    print("Spearman", scipy.stats.spearmanr(asi_x, og_asi))
+    print("Kendall", scipy.stats.kendalltau(asi_x, og_asi))
+
+    print("ASJ with OG")
+    print("Spearman", scipy.stats.spearmanr(asj_x, og_asj))
+    print("Kendall", scipy.stats.kendalltau(asj_x, og_asj))
+
+           
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="sea-elegance run")
     parser.add_argument("--load", default=".", help="Path to our model dir.")
@@ -254,7 +374,8 @@ if __name__ == "__main__":
                                   converters={'source': strip,
                                               'target': strip})
 
-        mask_check(model, device, args.data, valid_paths, args.save)
+        #mask_check(model, device, args.data, valid_paths, args.save)
+        fluoro_check(model, device, valid_paths, args.load, args.data)
 
     else:
         print("--load must point to a run directory. --data must point to the dataset")

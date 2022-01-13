@@ -71,6 +71,7 @@ class Up(nn.Module):
         diffY = x2.size()[3] - x1.size()[3]
         diffX = x2.size()[4] - x1.size()[4]
 
+        # TODO - Are we sure this padding is right? Looks odd to me. Indices dont mat the order in the padding
         x1 = F.pad(x1, [
                         diffX // 2, diffX - diffX // 2,
                         diffY // 2, diffY - diffY // 2,
