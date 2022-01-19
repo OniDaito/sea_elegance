@@ -120,6 +120,7 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader,  valid_dat
         schedule=torch.profiler.schedule(wait=2, warmup=2, active=6, repeat=1),
         on_trace_ready=tensorboard_trace_handler(args.savedir + "/log"),
         record_shapes=True,
+        with_stack=True,
         profile_memory=True,
     ) as profiler:
         # Now start the training proper
