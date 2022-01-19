@@ -212,9 +212,6 @@ if __name__ == "__main__":
                         help='continue from a previous run.')
     parser.add_argument('--seed', type=int, default=1, metavar='S',
                         help='random seed (default: 1)')
-    parser.add_argument('--log-interval', type=int, default=10,
-                        metavar='N',
-                        help='how many batches to wait before logging training status')
     parser.add_argument('--savedir', default="./save",
                         help='The name for checkpoint save directory.')
     parser.add_argument("--savename", default="checkpoint.pth.tar",
