@@ -110,38 +110,48 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader,  valid_dat
     print("Total params:", pytorch_total_params)
     model.train()
 
-    # Now start the training proper
-    for epoch in range(start_epoch, args.epochs):
-        for batch_idx, (source, target_mask) in enumerate(train_data):
-            optimiser.zero_grad()
-            result = model(source)
-            target_mask = target_mask.to(device=result.device, dtype=torch.long)
-            # TODO not sure the permute is right here?
-            loss = loss_func(result, target_mask) + dice_loss(F.softmax(result, dim=1).float(),
-                                                                F.one_hot(target_mask, model.n_classes).permute(
-                                                                    0, 4, 1, 2, 3).float(),
-                                                                multiclass=True)
-            loss.backward()
-            optimiser.step()
-            step = epoch * len(train_data) + (batch_idx * args.batch_size)
-            writer.add_scalar('training loss', float(loss), step)
-            print('Train Epoch / Step: {} {}.\tLoss: {:.6f}'.format(epoch,
-                                                                    batch_idx, float(loss)))
-          
-            if batch_idx % args.log_interval == 0 and batch_idx != 0:
-                save_checkpoint(model, optimiser, epoch, batch_idx,
-                                loss, args, optimiser.param_groups[0]['lr'], args.savedir, args.savename)
-                test(args, model, test_data, step, writer)
-                # Run a validation pass, with the scheduler
 
-            del loss
+    with torch.profiler.profile(
+        schedule=torch.profiler.schedule(wait=2, warmup=2, active=6, repeat=1),
+        on_trace_ready=tensorboard_trace_handler(args.savedir + "/log"),
+        with_stack=True,
+        record_shapes=True,
+        profile_memory=True,
+    ) as profiler:
+        # Now start the training proper
+        for epoch in range(start_epoch, args.epochs):
+            for batch_idx, (source, target_mask) in enumerate(train_data):
+                optimiser.zero_grad()
+                result = model(source)
+                target_mask = target_mask.to(device=result.device, dtype=torch.long)
+                # TODO not sure the permute is right here?
+                loss = loss_func(result, target_mask) + dice_loss(F.softmax(result, dim=1).float(),
+                                                                    F.one_hot(target_mask, model.n_classes).permute(
+                                                                        0, 4, 1, 2, 3).float(),
+                                                                    multiclass=True)
+                loss.backward()
+                optimiser.step()
+                step = epoch * len(train_data) + (batch_idx * args.batch_size)
+                writer.add_scalar('training loss', float(loss), step)
+                print('Train Epoch / Step: {} {}.\tLoss: {:.6f}'.format(epoch,
+                                                                        batch_idx, float(loss)))
+            
+                if batch_idx % args.log_interval == 0 and batch_idx != 0:
+                    save_checkpoint(model, optimiser, epoch, batch_idx,
+                                    loss, args, optimiser.param_groups[0]['lr'], args.savedir, args.savename)
+                    test(args, model, test_data, step, writer)
+                    # Run a validation pass, with the scheduler
 
-            if batch_idx % args.save_interval == 0 and batch_idx != 0:
-                save_model(model, args.savedir + "/model.tar")
+                del loss
 
-            del source, target_mask
-            torch.cuda.empty_cache()
-        scheduler.step(evaluate(args, model, valid_data))
+                if batch_idx % args.save_interval == 0 and batch_idx != 0:
+                    save_model(model, args.savedir + "/model.tar")
+
+                del source, target_mask
+                torch.cuda.empty_cache()
+                profiler.step()
+
+            scheduler.step(evaluate(args, model, valid_data))
 
 
 def dataset_to_disk(args, dataset, subset, filename="dataset.csv"):

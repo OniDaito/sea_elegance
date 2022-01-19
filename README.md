@@ -35,5 +35,8 @@ Running a model with an image to make a prediction
 
 ## Visualisation
 
-Using the latest pyglet
-    pip install --upgrade --user https://github.com/pyglet/pyglet/archive/master.zip
+Using [Vedo](https://github.com/marcomusy/vedo) ([docs](https://vedo.embl.es/autodocs/content/vedo/index.html)) Once our viz.py is run.
+
+    python viz/viz.py --image /media/proto_backup/wormz/queelim/dataset_21_10_2021/02374_layered.fits --savepath base.ply
+    python viz/viz.py --image eval_0.fits --savepath predict.ply
+    vedo base.ply predict.ply --alpha 0.5
