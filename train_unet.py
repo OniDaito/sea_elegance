@@ -252,6 +252,7 @@ if __name__ == "__main__":
 
     # Start Tensorboard
     writer = SummaryWriter(args.savedir + '/tensorboard')
+    writer.add_graph(model)
     epoch = 0
 
     if args.resume:
@@ -263,7 +264,4 @@ if __name__ == "__main__":
     train(args, model, train_data, test_data,
           valid_data, optimiser, scheduler, writer, epoch)
 
-    # Final things to write to tensorboard
-    images, _, _ = next(iter(train_data))
-    writer.add_graph(model, images)
     writer.close()
