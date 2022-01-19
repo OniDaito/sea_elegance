@@ -28,6 +28,12 @@ from net.dice_score import dice_loss, multiclass_dice_coeff
 from util.loadsave import save_checkpoint, save_model, load_checkpoint, load_model
 from util.image import reduce_source, reduce_mask, reduce_result
 from codecarbon import track_emissions
+from torch.profiler import (
+    profile,
+    record_function,
+    ProfilerActivity,
+    tensorboard_trace_handler,
+)
 
 
 def loss_func(result, target) -> torch.Tensor:
@@ -110,11 +116,9 @@ def train(args, model, train_data: DataLoader, test_data: DataLoader,  valid_dat
     print("Total params:", pytorch_total_params)
     model.train()
 
-
     with torch.profiler.profile(
         schedule=torch.profiler.schedule(wait=2, warmup=2, active=6, repeat=1),
         on_trace_ready=tensorboard_trace_handler(args.savedir + "/log"),
-        with_stack=True,
         record_shapes=True,
         profile_memory=True,
     ) as profiler:
