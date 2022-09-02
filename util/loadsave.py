@@ -116,7 +116,11 @@ def load_checkpoint(
     args = checkpoint["args"]
     optimiser = optim.Adam(model.parameters(), lr=args.lr, weight_decay=1e-5, eps=1e-3)
     model = model.to(device)
-    learning_rate = checkpoint['learning_rate']
+    learning_rate = 0.001
+    try:
+        learning_rate = checkpoint['learning_rate']
+    except Exception e:
+        print("Could not load learning rate. Setting to 0.001")
 
     return (model, optimiser, epoch, batch_idx, loss, args, learning_rate)
 

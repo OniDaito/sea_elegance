@@ -40,76 +40,6 @@ def load_image(image_path: str, normalise=False, dtype=torch.float32) -> torch.T
     return input_image
 
 
-def visualise_scores(score_path: list):
-    scores = [s[0] for s in score_path]
-    paths = [s[1] for s in score_path]
-    # Mean of all the overlays
-    num_scores = len(scores)
-    m = np.array([s['overlay'] for s in scores])
-    mean_score = np.mean(m)
-    print("Mean Overlay Score", mean_score, "over",
-          num_scores, "images, with std dev", np.std(m))
-    m = np.array([s['overlap'] for s in scores])
-    mean_score = np.mean(m)
-    print("Mean Overlap Percentage: ", mean_score,  "over",
-          num_scores, "images, with std dev", np.std(m))
-    m = np.array([s['dice'] for s in scores])
-    mean_score = np.mean(m)
-    print("Mean Dice : ", mean_score,  "over",
-          num_scores, "images, with std dev", np.std(m))
-    m = np.array([s['jacc'] for s in scores])
-    mean_score = np.mean(m)
-    print("Mean Jaccard Score : ", mean_score,  "over",
-          num_scores, "images, with std dev", np.std(m))
-
-    for c in range(2):
-        d = np.array([s['class_dice'][c] for s in scores])
-        mean_score = np.mean(d)
-        print("Mean Dice Score on Class", c + 1, " : ", mean_score, "over",
-            num_scores, "images, with std dev", np.std(d))
-
-    for i, s in enumerate(scores):
-        print(i, " - ", paths[i], " - Jacc:", s['jacc'], " Dice:", s['dice'])
-
-
-def compare_masks(original: np.ndarray, predicted:  np.ndarray):
-    # L1 Sum absolute differences
-    l1 = np.subtract(original, predicted)
-    l1 = np.absolute(l1)
-    l1 = np.sum(l1)
-
-    # Mask overlay score
-    tsize = np.shape(original)
-    tsize = tsize[0] * tsize[1] * tsize[2]
-    overlay = np.sum(np.where(original == predicted, 1, 0)) / tsize * 100
-
-    # Of the areas, how did we get it right?
-    m = np.where(original != 0, 1, 0)
-    n = np.where(predicted != 0, 1, 0)
-    overlap = np.sum(m * n) / np.sum(original) * 100
-
-    # Dice score
-    dice = (2 * np.sum(m * n)) / (np.sum(m) + np.sum(n))
-
-    # Jaccard
-    jacc = np.sum(n * m) / (np.sum(n) + np.sum(m) - np.sum(n * m))
-
-    # Per class Dice and Jaccard
-    class_dice = []
-    class_jacc = []
-
-    for c in range(1, 3):
-        m = np.where(original == c, 1, 0)
-        n = np.where(predicted == c, 1, 0)
-        dice = (2 * np.sum(m * n)) / (np.sum(m) + np.sum(n))
-        jacc = np.sum(n * m) / (np.sum(n) + np.sum(m) - np.sum(n * m))
-        class_dice.append(dice)
-        class_jacc.append(jacc)
-
-    return {"l1": l1, "overlay": overlay, "overlap": overlap,
-            "dice": dice, "jacc": jacc, "class_dice": class_dice, "class_jacc": class_jacc}
-
-
 def colourize(value, vmin=None, vmax=None, cmap=None):
     """
     A utility function for TensorFlow that maps a grayscale image to a matplotlib
@@ -131,14 +61,14 @@ def colourize(value, vmin=None, vmax=None, cmap=None):
     output_color = colourize(output, vmin=0.0, vmax=1.0, cmap='viridis')
     tf.summary.image('output', output_color)
     ```
-    
+
     Returns a 3D tensor of shape [height, width, 3].
     """
 
     # normalize
     vmin = np.amin(value) if vmin is None else vmin
     vmax = np.amax(value) if vmax is None else vmax
-    value = (value - vmin) / (vmax - vmin) # vmin..vmax
+    value = (value - vmin) / (vmax - vmin)  # vmin..vmax
 
     # squeeze last dim if it exists
     value = np.squeeze(value)
@@ -155,18 +85,67 @@ def colourize(value, vmin=None, vmax=None, cmap=None):
 
 
 def save_mixed_image(pred: np.ndarray, mask: np.ndarray, path: str):
-    correct_1 = np.where(mask == 1, 1, 0) * np.where(pred == 1, 1, 0)
-    correct_2 = np.where(mask == 2, 1, 0) * np.where(pred == 2, 1, 0)
-    correct = np.where((correct_1 + correct_2) != 0, 1, 0)
-    incorrect_1 = np.where(mask == 1, 1, 0) * np.where(pred != 1, 1, 0)
-    incorrect_2 = np.where(mask == 2, 1, 0) * np.where(pred != 2, 1, 0)
-    incorrect =  np.where((incorrect_1 + incorrect_2) != 0, 2, 0)
-    mixed = correct + incorrect
+    correct_1 = np.where(mask == 1, 5, 0) * np.where(pred == 1, 1, 0)
+    correct_2 = np.where(mask == 2, 10, 0) * np.where(pred == 2, 1, 0)
+    incorrect_1 = np.where(mask == 1, 30, 0) * np.where(pred != 1, 1, 0)
+    incorrect_2 = np.where(mask == 2, 50, 0) * np.where(pred != 2, 2, 0)
+    mixed = correct_1 + correct_2 + incorrect_1 + incorrect_2
 
     final = colourize(mixed.astype(np.float32), cmap='viridis')
     # Flip vertically as for some reason, saving PNG / JPG seems to save different to fits
 
     save_image(np.flip(final, 0), path, "PNG")
+
+
+def compare_masks(original: np.ndarray, predicted: np.ndarray):
+    # L1 Sum absolute differences
+    l1 = np.subtract(original, predicted)
+    l1 = np.absolute(l1)
+    l1 = np.sum(l1)
+
+    # Mask overlay score
+    tsize = np.shape(original)
+    usize = tsize[0] * tsize[1] * tsize[2]
+    overlay = np.sum(np.where(original == predicted, 1, 0)) / usize
+    score = str(overlay) + ","
+
+    # Of the areas, how did we get it right?
+    m = np.where(original != 0, 1, 0)
+    n = np.where(predicted != 0, 1, 0)
+    overlap = np.sum(m * n) / np.sum(m)
+    score += str(overlap) + ","
+
+    # Dice score
+    dice = (2 * np.sum(m * n)) / (np.sum(m) + np.sum(n))
+    score += str(dice) + ","
+
+    # Jaccard
+    jacc = np.sum(n * m) / (np.sum(n) + np.sum(m) - np.sum(n * m))
+    score += str(jacc) + ","
+
+    # Per class Dice and Jaccard
+    fm = np.where(original == 0, 1, 0)
+    fn = np.where(predicted == 0, 1, 0)
+
+    for c in range(1, 3):
+        m = np.where(original == c, 1, 0)
+        n = np.where(predicted == c, 1, 0)
+      
+        dice = (2 * np.sum(m * n)) / (np.sum(m) + np.sum(n))
+        jacc = np.sum(n * m) / (np.sum(n) + np.sum(m) - np.sum(n * m))
+        score += str(dice) + ","
+        score += str(jacc) + ","
+        true_pos = np.sum(m * n)
+        true_neg = np.sum(fm * fn)
+        false_pos = np.sum(n * fm)
+        false_neg = np.sum(fn * m)
+        score += str(true_pos) + ","
+        score += str(true_neg) + ","
+        score += str(false_pos) + ","
+        score += str(false_neg) + ","
+
+    score = score[:-1]
+    return score
 
 
 def mask_check(model, device, save_path, valid_set, save=False):
@@ -180,7 +159,7 @@ def mask_check(model, device, save_path, valid_set, save=False):
 
     device : torch.Device
         The device to run on (cpu or cuda)
-    
+
     save_path : str
         Path to the saved run
 
@@ -195,7 +174,9 @@ def mask_check(model, device, save_path, valid_set, save=False):
 
     # Need to call model.eval() to set certain layers to eval mode. Ones
     # like dropout and what not
-    scores = []
+
+    with open("eval_log.csv", "w") as w:
+        w.write("idx,Overlay,Overlap,Dice,Jaccard,Dice1,Jacc1,tp1,tn1,fp1,fn1,Dice2,Jacc2,tp2,tn2,fp2,fn2\n")
 
     for idx in range(1, int((valid_set.size) / 2)):
         source_path = save_path + "/" + valid_set.iloc[idx, 0]
@@ -217,14 +198,15 @@ def mask_check(model, device, save_path, valid_set, save=False):
                 save_fits(mid, "./eval_" + str(idx-1) + ".fits")
                 pred = mid.amax(dim=0).numpy()
                 mask = mask_image.amax(axis=0).cpu().squeeze().numpy()
-                save_mixed_image(pred, mask, "./eval_" + str(idx-1) + ".png")  
+                save_mixed_image(pred, mask, "./eval_" + str(idx-1) + ".png")
 
             prediction = finalise_result(prediction)
             # Now compare both the prediction and the mask
-            score = compare_masks(mask_image.numpy(), prediction)
-            scores.append((score, source_path))
+            scores = compare_masks(mask_image.numpy(), prediction)
 
-    visualise_scores(scores)
+            with open("eval_log.csv", "a") as w:
+                w.write(str(idx) + "," + scores + "\n")
+
 
 
 def fluoro_check(model, device, valid_set, save_path, data_dir):
@@ -259,7 +241,7 @@ def fluoro_check(model, device, valid_set, save_path, data_dir):
     # Need to call model.eval() to set certain layers to eval mode. Ones
     # like dropout and what not
     scores_original = pd.read_csv(data_dir + "/fluoro.csv", names=["id", "asi1", "asi2", "asj1", "asj2", "file"],
-                    converters = {'file' : strip})
+                                  converters={'file': strip})
     final_scores = []
 
     for idx in range(1, int((valid_set.size) / 2)):
@@ -307,11 +289,12 @@ def fluoro_check(model, device, valid_set, save_path, data_dir):
             c2 = mid[:, :, :, 2].squeeze()
             m2_count = float(torch.sum(c2 * source_base))
 
-            final_scores.append(((og_asi, og_asj), (c1_count, c2_count), (m1_count, m2_count)))
+            final_scores.append(
+                ((og_asi, og_asj), (c1_count, c2_count), (m1_count, m2_count)))
 
-    print(final_scores)
+    with open("eval_fluro.txt", "w") as w:
+        w.write(str(final_scores) + "\n")
 
-    
     asi_x = [x[1][0] for x in final_scores]
     asi_y = [x[2][0] for x in final_scores]
 
@@ -321,28 +304,29 @@ def fluoro_check(model, device, valid_set, save_path, data_dir):
     asi_r = np.corrcoef(asi_x, asi_y)
     asj_r = np.corrcoef(asj_x, asj_y)
 
-    print("Correlations", asi_r, asj_r)
+    with open("eval_fluro.txt", "a") as w:
+        w.write("Correlations " + str(asi_r) + ", " + str(asj_r) + "\n")
+        w.write("ASI\n")
+        w.write("Spearman " + str(scipy.stats.spearmanr(asi_x, asi_y)) + "\n")
+        w.write("Kendall " + str(scipy.stats.kendalltau(asi_x, asi_y)) + "\n")
 
-    print("ASI")
-    print("Spearman", scipy.stats.spearmanr(asi_x, asi_y))
-    print("Kendall", scipy.stats.kendalltau(asi_x, asi_y))
-
-    print("ASJ")
-    print("Spearman", scipy.stats.spearmanr(asj_x, asj_y))
-    print("Kendall", scipy.stats.kendalltau(asj_x, asj_y))
+        w.write("ASJ\n")
+        w.write("Spearman " + str(scipy.stats.spearmanr(asj_x, asj_y)) + "\n")
+        w.write("Kendall " + str(scipy.stats.kendalltau(asj_x, asj_y)) + "\n")
 
     og_asi = [x[0][0] for x in final_scores]
     og_asj = [x[0][1] for x in final_scores]
 
-    print("ASI with OG")
-    print("Spearman", scipy.stats.spearmanr(asi_x, og_asi))
-    print("Kendall", scipy.stats.kendalltau(asi_x, og_asi))
+    with open("eval_fluro.txt", "a") as w:
+        w.write("ASI with OG\n")
+        w.write("Spearman " + str(scipy.stats.spearmanr(asi_x, og_asi)) + "\n")
+        w.write("Kendall " + str(scipy.stats.kendalltau(asi_x, og_asi)) + "\n")
 
-    print("ASJ with OG")
-    print("Spearman", scipy.stats.spearmanr(asj_x, og_asj))
-    print("Kendall", scipy.stats.kendalltau(asj_x, og_asj))
+        w.write("ASJ with OG\n")
+        w.write("Spearman " + str(scipy.stats.spearmanr(asj_x, og_asj)) + "\n")
+        w.write("Kendall " + str(scipy.stats.kendalltau(asj_x, og_asj)) + "\n")
 
-           
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="sea-elegance run")
     parser.add_argument("--load", default=".", help="Path to our model dir.")
@@ -374,7 +358,7 @@ if __name__ == "__main__":
                                   converters={'source': strip,
                                               'target': strip})
 
-        #mask_check(model, device, args.data, valid_paths, args.save)
+        mask_check(model, device, args.data, valid_paths, args.save)
         fluoro_check(model, device, valid_paths, args.load, args.data)
 
     else:
