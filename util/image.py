@@ -183,7 +183,7 @@ def reduce_mask(image, axis=0) -> np.ndarray:
     return np.array(final / 4 * 255).astype(np.uint8)
 
 
-def reduce_result(image, axis=0) -> np.ndarray:
+def reduce_result(image, axis=0, ncls=3) -> np.ndarray:
     """
     Reduce the 3D image mask result batch to a 2D single image 
 
@@ -201,13 +201,13 @@ def reduce_result(image, axis=0) -> np.ndarray:
     """
     first = image[0].detach().cpu().squeeze()
     mid = first
-    mid = F.one_hot(mid.argmax(dim=0), 3).permute(3, 0, 1, 2)
+    mid = F.one_hot(mid.argmax(dim=0), ncls).permute(ncls, 0, 1, 2)
     mid = np.argmax(mid, axis=0)* 255 / mid.shape[0]
     mid = mid.amax(dim = axis)
     return mid.numpy().astype(np.uint8)
 
 
-def finalise_result(image) -> np.ndarray:
+def finalise_result(image, ncls=3) -> np.ndarray:
     """
     Finalise the output of the neural network - do the 
     one hot and argmax permute stuff so we can get
@@ -224,6 +224,6 @@ def finalise_result(image) -> np.ndarray:
     """
     first = image[0].detach().cpu().squeeze()
     mid = first
-    mid = F.one_hot(mid.argmax(dim=0), 3).permute(3, 0, 1, 2)
+    mid = F.one_hot(mid.argmax(dim=0), ncls).permute(ncls, 0, 1, 2)
     mid = np.argmax(mid, axis=0)
     return mid.numpy().astype(np.uint8)
