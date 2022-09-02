@@ -119,7 +119,7 @@ def load_checkpoint(
     learning_rate = 0.001
     try:
         learning_rate = checkpoint['learning_rate']
-    except Exception e:
+    except:
         print("Could not load learning rate. Setting to 0.001")
 
     return (model, optimiser, epoch, batch_idx, loss, args, learning_rate)
