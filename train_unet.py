@@ -252,7 +252,8 @@ if __name__ == "__main__":
 
     # Start Tensorboard
     writer = SummaryWriter(args.savedir + '/tensorboard')
-    writer.add_graph(model)
+    source_image, _ = iter(valid_data).__next__()
+    writer.add_graph(model, input_to_model=source_image)
     epoch = 0
 
     if args.resume:
