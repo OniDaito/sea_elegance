@@ -96,6 +96,7 @@ if __name__ == "__main__":
     # Load the image we want to segment
     if os.path.isfile(args.image):
         input_image = load_fits(args.image, dtype=torch.float32)
+        input_image = resize_3d(input_image, zoom=0.5)
         normalised_image = input_image / 4095.0
         save_fits(normalised_image, name="normalised_input.fits")
         final_image = torch.tensor(normalised_image)
