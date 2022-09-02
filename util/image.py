@@ -201,7 +201,7 @@ def reduce_result(image, axis=0, ncls=3) -> np.ndarray:
     """
     first = image[0].detach().cpu().squeeze()
     mid = first
-    mid = F.one_hot(mid.argmax(dim=0), ncls).permute(ncls, 0, 1, 2)
+    mid = F.one_hot(mid.argmax(dim=0), ncls).permute(3, 0, 1, 2)
     mid = np.argmax(mid, axis=0)* 255 / mid.shape[0]
     mid = mid.amax(dim = axis)
     return mid.numpy().astype(np.uint8)
