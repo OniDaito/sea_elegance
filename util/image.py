@@ -137,7 +137,7 @@ def resize_3d(image, zoom=1.0) -> torch.Tensor:
     torch.Tensor
     """
 
-    target = nd.interpolation.zoom(image.cpu().numpy(), zoom=0.5)
+    target = nd.interpolation.zoom(image.cpu().numpy(), zoom=zoom)
     return torch.tensor(target)
 
 
