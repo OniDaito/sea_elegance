@@ -83,6 +83,7 @@ if __name__ == "__main__":
         # (savedir, savename) = os.path.split(args.load)
         # print(savedir, savename)
         model = load_model(args.load + "/model.tar")
+        model.n_classes = 5
         (model, _, _, _, _, prev_args, _) = load_checkpoint(
             model, args.load, "checkpoint.pth.tar", device
         )

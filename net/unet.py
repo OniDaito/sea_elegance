@@ -30,10 +30,10 @@ class NetU(nn.Module):
     ''' U-Net code, based on
     https://github.com/milesial/Pytorch-UNet/.'''
 
-    def __init__(self, dtype=torch.float32):
+    def __init__(self, ncls=3, dtype=torch.float32):
         super(NetU, self).__init__()
         self.n_channels = 1
-        self.n_classes = 3
+        self.n_classes = ncls
         self.trilinear = True
         self.inc = mp.DoubleConv(1, 32, dtype=dtype)
         self.down1 = mp.Down(32, 64, dtype=dtype)
