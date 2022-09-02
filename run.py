@@ -61,8 +61,8 @@ def image_test(model, device, input_image):
             np.save(f, prediction.detach().cpu().numpy())
 
         assert(not (torch.all(prediction == 0).item()))
-        save_image(reduce_result(prediction), name="guess.jpg")
-        save_fits(finalise_result(prediction), name="guess.fits")
+        save_image(reduce_result(prediction, ncls=5), name="guess.jpg")
+        save_fits(finalise_result(prediction, ncls=5), name="guess.fits")
 
 
 if __name__ == "__main__":
