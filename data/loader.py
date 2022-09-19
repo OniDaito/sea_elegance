@@ -91,7 +91,13 @@ class WormDataset(Dataset):
             hdul = w[0].data.byteswap().newbyteorder()
             target_mask = np.array(hdul).astype("int8")
             assert(np.all(target_mask >= 0))
-            assert(np.all(target_mask < 3))
+            if np.all(target_mask >= 3)):
+              # we have a 5 class so make it 3
+              target_mask[x==2] = 1
+              target_mask[x==3] = 2
+              target_mask[x==4] = 2
+              assert(np.all(target_mask < 3))
+
             target_mask = target_mask.astype(np.float32)
             # target_mask_final = make_sparse(target_mask, self.device)
             target_mask_final = torch.tensor(target_mask, dtype=torch.float32, device=self.device)
