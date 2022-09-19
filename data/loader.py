@@ -94,9 +94,9 @@ class WormDataset(Dataset):
             
             if np.all(target_mask >= 3):
               # we have a 5 class so make it 3
-              target_mask[x==2] = 1
-              target_mask[x==3] = 2
-              target_mask[x==4] = 2
+              target_mask[target_mask==2] = 1
+              target_mask[target_mask==3] = 2
+              target_mask[target_mask==4] = 2
               assert(np.all(target_mask < 3))
 
             target_mask = target_mask.astype(np.float32)
