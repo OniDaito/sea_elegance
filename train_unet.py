@@ -173,6 +173,7 @@ def load_data(args, device) -> Tuple[DataLoader, DataLoader, DataLoader]:
                             img_dir=args.image_path,
                             device=device)
     dsize = args.train_size + args.test_size + args.valid_size
+    print("Requested Data Size", dsize, "Actual Dataset Size", len(worm_data))
     assert(dsize <= len(worm_data))
     train_dataset, test_dataset, valid_dataset = torch.utils.data.random_split(
         worm_data, [args.train_size, args.test_size, args.valid_size])
