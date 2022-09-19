@@ -27,7 +27,7 @@ from torch import autograd
 from net.dice_score import dice_loss, multiclass_dice_coeff
 from util.loadsave import save_checkpoint, save_model, load_checkpoint, load_model
 from util.image import reduce_source, reduce_mask, reduce_result
-from codecarbon import track_emissions
+
 from torch.profiler import (
     profile,
     record_function,
@@ -106,7 +106,6 @@ def evaluate(args, model, data: DataLoader):
 
 # TODO - eventually we'll need to be able to resume from a step as well as an epoch but we'd have to save the 
 # dataloader step so that might not quite work.
-@track_emissions
 def train(args, model, train_data: DataLoader, test_data: DataLoader,  valid_data: DataLoader,
           optimiser, scheduler, writer: SummaryWriter, start_epoch=0):
     pytorch_total_params = sum(p.numel()
