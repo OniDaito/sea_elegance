@@ -70,7 +70,7 @@ class WormDataset(Dataset):
         # torchvision was in the original code example but it fails to read 16bit pngs
         # It looks like torch doesn't do 16 bit unsigned, so lets convert and hope it's ok
         img_path = os.path.join(self.img_dir, self.img_targets.iloc[idx, 0])
-
+        print("input_path", img_path)
         # TODO - should normalised range go from -1 to 1?
 
         with fits.open(img_path) as w:
@@ -85,6 +85,7 @@ class WormDataset(Dataset):
             source_image_final = torch.tensor(source_image, dtype=torch.float32, device=self.device)
         
         img_path = os.path.join(self.img_dir, self.img_targets.iloc[idx, 1])
+        print("mask_path", img_path)
 
         with fits.open(img_path) as w:
             # We can keep the masks as ordinals and not split into a number of dimensions
