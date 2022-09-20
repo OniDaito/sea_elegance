@@ -63,7 +63,7 @@ class WormDataset(Dataset):
         self.device = device
 
     def __len__(self):
-        return len(self.img_targets) - 1 # -1 for the column headings
+        return len(self.img_targets)
 
     def __getitem__(self, idx):
         # Using PIL here and making sure we set uint16 as PIL incorrecly reads this as uint8

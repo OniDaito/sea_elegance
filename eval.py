@@ -208,7 +208,6 @@ def mask_check(model, device, save_path, valid_set, save=False):
                 w.write(str(idx) + "," + scores + "\n")
 
 
-
 def fluoro_check(model, device, valid_set, save_path, data_dir):
     """
     Test our model by generating the masks for the valid set then
