@@ -24,7 +24,6 @@ import os
 import sys
 import torch.nn as nn
 from matplotlib import pyplot as plt
-from scipy.cluster.vq import kmeans
 from util.loadsave import load_model, load_checkpoint
 from util.image import load_fits, reduce_result, save_image, resize_3d
 import torch.nn.functional as F
@@ -109,6 +108,8 @@ def tiff_to_stack(tiff_path):
     imarray = np.array(im)
     imarray = imarray.reshape((51, 640, 600))
     bottom = imarray[:, 300:, :]
+    im = Image.fromarray(bottom)
+    im.save("latest.tiff")
     return bottom
 
 
@@ -566,20 +567,22 @@ if __name__ == "__main__":
     parser.add_argument(
         "--no-cuda", action="store_true", default=False, help="disables CUDA training"
     )
+    
+    parser.add_argument("--nclasses", type=int, default=5,
+                        help="Number of classes this network predicts",
+    )
     parser.add_argument('--load', default="")
     args = parser.parse_args()
-    nclasses = 3
     data = None
 
     if args.load != "" and os.path.exists(args.load):
         with open('data.pickle', 'rb') as f:
-            # The protocol version used is detected automatically, so we do not
-            # have to specify it.
             data = pickle.load(f)
+
     elif args.counts != "" and os.path.exists(args.counts):
-        data = read_counts(args, nclasses)
+        data = read_counts(args, args.nclasses)
     else:
-       data = gen_counts(args, nclasses)
+       data = gen_counts(args, args.nclasses)
 
     from scipy.stats import spearmanr, pearsonr
 
