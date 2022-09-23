@@ -207,6 +207,53 @@ def mask_check(model, device, save_path, valid_set, save=False):
             with open("eval_log.csv", "a") as w:
                 w.write(str(idx) + "," + scores + "\n")
 
+def csv_stats(csv_path):
+    """ If we have already computed the stats, lets present some averages 
+    and visualise. """
+    import csv
+
+    scores  = []
+
+    with open(csv_path) as csvfile:
+        reader = csv.DictReader(csvfile, delimiter=',')
+        for line in reader:
+            scores.append(line)
+
+    asi_jacc = []
+    asj_jacc = []
+    all_jacc = []
+
+    asi_fp = []
+    asj_fp = []
+    asi_fn = []
+    asj_fn = []
+
+    for score in scores:
+        asi_jacc.append(float(score['Jacc1']))
+        asj_jacc.append(float(score['Jacc2']))
+        all_jacc.append(float(score['Jaccard']))
+        
+        asi_fp.append(float(score['fp1']))
+        asj_fp.append(float(score['fp2']))
+        asi_fn.append(float(score['fn1']))
+        asj_fn.append(float(score['fn2']))
+
+    asi_jacc = np.array(asi_jacc)
+    asj_jacc = np.array(asj_jacc)
+    all_jacc = np.array(all_jacc)
+
+    asi_fp = np.array(asi_fp)
+    asj_fp = np.array(asj_fp)
+    asi_fn = np.array(asi_fn)
+    asj_fn = np.array(asj_fn)
+
+    print("ASI min, max, mean, std", min(asi_jacc),  max(asi_jacc),  np.mean(asi_jacc), np.std(asi_jacc))
+    print("ASJ min, max, mean, std", min(asj_jacc),  max(asj_jacc),  np.mean(asj_jacc), np.std(asj_jacc))
+    print("all min, max, mean, std", min(all_jacc),  max(all_jacc),  np.mean(all_jacc), np.std(all_jacc))
+
+    print("Num ASI with scores < 0.5", len( asi_jacc[asi_jacc < 0.5]))
+    print("Num ASJ with scores < 0.5",len( asi_jacc[asj_jacc < 0.5]))
+
 
 def fluoro_check(model, device, valid_set, save_path, data_dir):
     """
@@ -330,6 +377,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="sea-elegance run")
     parser.add_argument("--load", default=".", help="Path to our model dir.")
     parser.add_argument("--data", default=".", help="Path to our dataset dir.")
+    parser.add_argument("--csv", default="", help="Path to a pre-computed csv file.")
+
 
     parser.add_argument(
         "--no-cuda", action="store_true", default=False, help="disables CUDA training."
@@ -342,7 +391,7 @@ if __name__ == "__main__":
     use_cuda = not args.no_cuda and torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
 
-    if args.load and args.data and os.path.isfile(args.load + "/checkpoint.pth.tar") and os.path.isfile(args.load + "/dataset_valid.csv"):
+    if args.load and args.data and os.path.isfile(args.load + "/checkpoint.pth.tar") and os.path.isfile(args.load + "/dataset_test.csv"):
         # Load the model and all the parameters for it
         model = load_model(args.load + "/model.tar")
         (model, _, _, _, _, prev_args, _) = load_checkpoint(
@@ -352,14 +401,16 @@ if __name__ == "__main__":
         model.eval()
 
         # Now load the CSV for the validation set
-
-        valid_paths = pd.read_csv(args.load + "/dataset_valid.csv", names=["source", "target"],
+        # TODO - change to remove pandas as pandas messes up the headings
+        valid_paths = pd.read_csv(args.load + "/dataset_test.csv", names=["source", "target"],
                                   converters={'source': strip,
                                               'target': strip})
 
         mask_check(model, device, args.data, valid_paths, args.save)
-        fluoro_check(model, device, valid_paths, args.load, args.data)
+        # fluoro_check(model, device, valid_paths, args.load, args.data)
 
+    elif args.csv and os.path.exists(args.csv):
+        csv_stats(args.csv)
     else:
-        print("--load must point to a run directory. --data must point to the dataset")
+        print("--load must point to a run directory. --data must point to the dataset, or -csv to an existing csv")
         sys.exit(0)
