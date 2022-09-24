@@ -27,6 +27,8 @@ from matplotlib import pyplot as plt
 from util.loadsave import load_model, load_checkpoint
 from util.image import load_fits, reduce_result, save_image, resize_3d
 import torch.nn.functional as F
+from PIL import Image
+from util.image import save_fits
 
 
 data_files = [ 
@@ -102,15 +104,15 @@ data_files = [
 ]
 
 def tiff_to_stack(tiff_path):
-    from PIL import Image
     print("Stacking", tiff_path)
     im = Image.open(tiff_path)
     imarray = np.array(im)
     imarray = imarray.reshape((51, 640, 600))
-    bottom = imarray[:, 300:, :]
-    im = Image.fromarray(bottom)
-    im.save("latest.tiff")
-    return bottom
+    bottom = imarray[:, 320:640, :]
+    print("Cropped shape", bottom.shape)
+    if os.path.exists("latest.fits"):
+        os.remove("latest.fits")
+    save_fits(bottom, "latest.fits")
 
 
 def read_counts(args, nclasses):
@@ -266,7 +268,8 @@ def read_counts(args, nclasses):
 
             tiff_path = source_tiffs[fidx]
             tiff_path = tiff_path.replace("phd/wormz/queelim", args.base)
-            og_image = tiff_to_stack(tiff_path)
+            tiff_to_stack(tiff_path)
+            og_image = load_fits("latest.fits")
             
             source_path, target_path = paths
             input_image = load_fits(source_path, dtype=torch.float32)
