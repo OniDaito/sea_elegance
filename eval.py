@@ -247,9 +247,9 @@ def csv_stats(csv_path):
     asi_fn = np.array(asi_fn)
     asj_fn = np.array(asj_fn)
 
-    print("ASI min, max, mean, std", min(asi_jacc),  max(asi_jacc),  np.mean(asi_jacc), np.std(asi_jacc))
-    print("ASJ min, max, mean, std", min(asj_jacc),  max(asj_jacc),  np.mean(asj_jacc), np.std(asj_jacc))
-    print("all min, max, mean, std", min(all_jacc),  max(all_jacc),  np.mean(all_jacc), np.std(all_jacc))
+    print("ASI min, max, mean, std", min(asi_jacc),  max(asi_jacc),  np.mean(asi_jacc), np.median(asi_jacc), np.std(asi_jacc))
+    print("ASJ min, max, mean, std", min(asj_jacc),  max(asj_jacc),  np.mean(asj_jacc), np.median(asj_jacc), np.std(asj_jacc))
+    print("all min, max, mean, std", min(all_jacc),  max(all_jacc),  np.mean(all_jacc), np.median(all_jacc), np.std(all_jacc))
 
     print("Num ASI with scores < 0.5", len( asi_jacc[asi_jacc < 0.5]))
     print("Num ASJ with scores < 0.5",len( asi_jacc[asj_jacc < 0.5]))
