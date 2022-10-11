@@ -104,6 +104,17 @@ data_files = [
 ]
 
 
+def tiff_to_stack(tiff_path):
+    print("Stacking", tiff_path)
+    im = Image.open(tiff_path)
+    imarray = np.array(im)
+    imarray = imarray.reshape((51, 640, 600))
+    bottom = imarray[:, 320:640, :]
+    print("Cropped shape", bottom.shape)
+    if os.path.exists("latest.fits"):
+        os.remove("latest.fits")
+    save_fits(bottom, "latest.fits")
+
 def find_image_pairs(args):
     ''' Find all the images we need and pair them up properly with correct paths.
     We want to find the original fits images that correspond to our test dataset.'''
