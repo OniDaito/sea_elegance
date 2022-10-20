@@ -217,8 +217,30 @@ def find_image_pairs(args):
     
     return sources_masks, og_sources, og_masks, rois
 
-def crop_image(image, roi):
-    cropped = image[:, roi['ys']:roi['ye'], roi['xs']:roi['xe'] ]
+def crop_image(image, roi, target_size):
+    ''' Crop the image. However the crop might be bigger than the actual
+    target size due to '''
+    xs = roi['xs']
+    xe = roi['xe']
+    ys = roi['ys']
+    ye = roi['ye']
+    width = xe - xs
+    height = ye - ys
+
+    if target_size[0] != width:
+        dw = int((width - target_size[0]) / 2)
+        xs = xs + dw
+        xe = xe - dw
+
+    if target_size[1] != height:
+        dh = int((height - target_size[1]) / 2)
+        ys = ys + dh
+        ye = ye - dh
+
+    assert(xe - xs == target_size[0])
+    assert(ye - ys == target_size[1])
+
+    cropped = image[:, ys:ye, xs:xe ]
     return cropped
 
 def read_counts(args, sources_masks, og_sources, og_masks, rois):
@@ -281,9 +303,14 @@ def read_counts(args, sources_masks, og_sources, og_masks, rois):
 
             og_image = load_fits(og_path, dtype=torch.float32)
             roi = rois[fidx]
-            og_image = crop_image(og_image, roi)
+           
             input_image = load_fits(source_path, dtype=torch.float32)
             target_image = load_fits(target_path, dtype=torch.float32)
+
+            width = input_image.shape[-1]
+            height = input_image.shape[-2]
+            depth = input_image.shape[-3]
+            og_image = crop_image(og_image, roi, (width, height, depth))
 
             # TODO - no resizing this time around
             resized_image = input_image # resize_3d(input_image, 0.5)
