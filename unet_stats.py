@@ -445,6 +445,8 @@ def read_counts(args, sources_masks, og_sources, og_masks, rois):
                     asj_1_total_pred.append(count_asj_1.numpy())
 
                     # Now look at the false pos, false neg and get the scores
+                    # Commented out for now as memory usage is too high
+                    '''
                     asi_1_pred_inv = torch.where(resized_prediction == 1, 0, 1)
                     asj_1_pred_inv = torch.where(resized_prediction == 2, 0, 1)
 
@@ -467,6 +469,7 @@ def read_counts(args, sources_masks, og_sources, og_masks, rois):
                     asi_1_total_false_neg.append(count_asi_1_false_neg.numpy())
                     asj_1_total_false_pos.append(count_asj_1_false_pos.numpy())
                     asj_1_total_false_neg.append(count_asj_1_false_neg.numpy())
+                    '''
 
     data = {}
     data["asi_1_actual"] = asi_1_total
