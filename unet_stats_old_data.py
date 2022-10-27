@@ -9,7 +9,7 @@ Author : Benjamin Blundell - k1803390@kcl.ac.uk
 stats.py - look at the worm data and generate some stats
 
 Example use:
-ython unet_stats_old_data.py --rep /media/proto_backup/wormz/queelim --base /phd/wormz/queelim  --dataset /media/proto_backup/wormz/queelim/dataset_21_10_2021 --savedir /media/proto_working/runs/wormz_2022_09_15 --nclasses 3 --half
+ython unet_stats_old_data.py --rep /media/proto_backup/wormz/queelim --base /phd/wormz/queelim  --dataset /media/proto_backup/wormz/queelim/dataset_21_10_2021 --savedir /media/proto_working/runs/wormz_2022_09_15 --nclasses 3 --half --no-cuda
 python unet_stats_old_data.py --load data.pickle
 
 """

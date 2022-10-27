@@ -5,7 +5,9 @@
 /_/ \___/_/   /___/\___/___/___/_/|_/\___/___/      # noqa
 Author : Benjamin Blundell - k1803390@kcl.ac.uk
 
-eval.py - evaluate our network based on the validation set
+eval.py - evaluate our network based on the test set
+
+python eval.py --load /media/proto_working/runs/wormz_2022_09_19 --data /media/proto_backup/wormz/queelim/dataset_3d_basic_noresize --no-cuda
 
 """
 
@@ -176,7 +178,7 @@ def mask_check(model, device, save_path, valid_set, save=False):
     # like dropout and what not
 
     with open("eval_log.csv", "w") as w:
-        w.write("idx,Overlay,Overlap,Dice,Jaccard,Dice1,Jacc1,tp1,tn1,fp1,fn1,Dice2,Jacc2,tp2,tn2,fp2,fn2\n")
+        w.write("idx,src,mask,Overlay,Overlap,Dice,Jaccard,Dice1,Jacc1,tp1,tn1,fp1,fn1,Dice2,Jacc2,tp2,tn2,fp2,fn2\n")
 
     for idx in range(1, int((valid_set.size) / 2)):
         source_path = save_path + "/" + valid_set.iloc[idx, 0]
@@ -205,7 +207,7 @@ def mask_check(model, device, save_path, valid_set, save=False):
             scores = compare_masks(mask_image.numpy(), prediction)
 
             with open("eval_log.csv", "a") as w:
-                w.write(str(idx) + "," + scores + "\n")
+                w.write(str(idx) + "," + source_path + "," + mask_path + "," + scores + "\n")
 
 def csv_stats(csv_path):
     """ If we have already computed the stats, lets present some averages 
