@@ -360,7 +360,7 @@ def read_counts(args, sources_masks, og_sources, og_masks, rois):
                     asi_actual_hf.resize(asi_actual_hf.shape[0] + 1, axis = 0)
                     asi_actual_hf[-count_asi_real.shape[0]:] = count_asi_real
 
-                    asj_actual_hf.resize(count_asj_real.shape[0] + 1, axis = 0)
+                    asj_actual_hf.resize(asj_actual_hf.shape[0] + 1, axis = 0)
                     asj_actual_hf[-count_asj_real.shape[0]:] = count_asj_real
 
                     # Now append the predictions
