@@ -10,7 +10,7 @@ stats.py - look at the worm data and generate some stats
 
 Example use:
 python unet_stats.py --base /phd/wormz/queelim --rep /media/proto_backup/wormz/queelim --dataset /media/proto_backup/wormz/queelim/dataset_3d_basic_noresize --savedir /media/proto_working/runs/wormz_2022_09_19 --no-cuda
-python unet_stats.py --load data.pickle --nclasses 3
+python unet_stats.py --load summary_stats.h5
 
 """
 
@@ -364,11 +364,10 @@ def read_counts(args, sources_masks, og_sources, og_masks, rois):
                     asj_actual_hf[-count_asj_real.shape[0]:] = count_asj_real
 
                     # Now append the predictions
-
                     asi_pred_hf.resize(asi_pred_hf.shape[0] + 1, axis = 0)
                     asi_pred_hf[-count_asi_pred.shape[0]:] = count_asi_pred
 
-                    asj_pred_hf.resize(count_asj_pred.shape[0] + 1, axis = 0)
+                    asj_pred_hf.resize(asj_pred_hf.shape[0] + 1, axis = 0)
                     asj_pred_hf[-count_asj_pred.shape[0]:] = count_asj_pred
 
                     # Now look at the false pos, false neg and get the scores
@@ -405,10 +404,11 @@ def read_counts(args, sources_masks, og_sources, og_masks, rois):
                     asj_false_neg_hf[-count_asj_false_neg.shape[0]:] = count_asj_false_neg
                     
 
-def do_stats(args, data):
+def do_stats(args):
     ''' Now we have the data, lets do the stats on it.'''
+    from scipy.stats import spearmanr, pearsonr
 
-    with h5py.File('summary_stats.h5', 'r') as hf:
+    with h5py.File(args.load, 'r') as hf:
         asi_actual_hf = hf['asi_actual']
         asj_actual_hf = hf['asj_actual']
         asi_pred_hf = hf['asi_pred']
@@ -418,20 +418,20 @@ def do_stats(args, data):
         asj_false_pos_hf = hf['asj_false_pos']
         asj_false_neg_hf = hf['asj_false_neg']
 
-        '''
-        asi_combo_real =  np.array([float(np.sum(i)) for i in data['asi_1_actual']])
-        asi_combo_pred =  np.array([float(np.sum(i)) for i in data['asi_1_pred']])
-        asj_combo_real =  np.array([float(np.sum(i)) for i in data['asj_1_actual']])
-        asj_combo_pred =  np.array([float(np.sum(i)) for i in data['asj_1_pred']])
+        asi_real =  np.sum(np.array(asi_actual_hf), axis=(1,2,3))
+        asi_pred =  np.sum(np.array(asi_pred_hf), axis=(1,2,3))
+        asj_real =  np.sum(np.array(asj_actual_hf), axis=(1,2,3))
+        asj_pred =  np.sum(np.array(asj_pred_hf), axis=(1,2,3))
 
         print("Correlations - spearmans & pearsons - ASI, ASJ")
-        asi_combo_cor = spearmanr(asi_combo_real, asi_combo_pred)
-        asj_combo_cor = spearmanr(asj_combo_real, asj_combo_pred)
+        asi_combo_cor = spearmanr(asi_real, asi_pred)
+        asj_combo_cor = spearmanr(asj_real, asj_pred)
         print(asi_combo_cor, asj_combo_cor)
-        asi_combo_cor = pearsonr(asi_combo_real, asi_combo_pred)
-        asj_combo_cor = pearsonr(asj_combo_real, asj_combo_pred)
+        asi_combo_cor = pearsonr(asi_real, asi_pred)
+        asj_combo_cor = pearsonr(asj_real, asj_pred)
         print(asi_combo_cor, asj_combo_cor)
 
+        '''
 
         # We need to see the values in our predicted masks versus the original masks to see which dist is better
         sig_value = 291
@@ -451,6 +451,7 @@ def do_stats(args, data):
 
         asi_pred = np.delete(asi_pred, np.where(asi_pred == 0.0))
 
+        
         # Plot a histogram for ASJ
         sns.set_theme(style="whitegrid")
         fig, ax = plt.subplots()
@@ -502,6 +503,7 @@ def do_stats(args, data):
         print("ASJ Counts above and below sig for base and pred", above_actual, below_actual, above_pred, below_pred )
         '''
 
+        '''
         # Lets take a look at the entropy in these areas
         asi_false_pos = np.array(asi_false_pos_hf)
         asi_false_neg = np.array(asi_false_neg_hf)
@@ -509,7 +511,7 @@ def do_stats(args, data):
         asj_false_neg = np.array(asj_false_neg_hf)
 
         # Base probability of the predicted regions
-        asi_actual =  np.array(asi_actual_hf)
+        asi_actual = np.array(asi_actual_hf)
         pa = asi_actual[asi_actual != 0].astype(np.int32)
         counts = np.bincount(pa, minlength=4096)
         asi_actual_prob = counts / len(pa)
@@ -533,7 +535,6 @@ def do_stats(args, data):
         counts = np.bincount(pa, minlength=4096)
         asj_pred_prob = counts / len(pa)
         asj_pred_prob = np.where( asj_pred_prob <= 0, 1e-10, asj_pred_prob) # Helps with KL - there must always be a chance of success
-
 
         kldiv = sum(scipy.special.kl_div(asi_actual_prob, asi_pred_prob))
         jensen = scipy.spatial.distance.jensenshannon(asi_actual_prob, asi_pred_prob)
@@ -599,6 +600,8 @@ def do_stats(args, data):
         print("ASI to ASJ Pred  KL-Div, Jensen", kldiv, jensen)
 
         '''
+
+        '''
         # Multiclass alignments
         sns.set_theme(style="whitegrid")
         fig, axes = plt.subplots(2, 2)
@@ -642,20 +645,13 @@ if __name__ == "__main__":
         "--no-cuda", action="store_true", default=False, help="disables CUDA training"
     )
     
-    parser.add_argument('--load', default="")
+    parser.add_argument('--load', default="summary_stats.h5")
     args = parser.parse_args()
     data = None
 
     sources_masks, og_sources, og_masks, rois  = find_image_pairs(args)
 
-    if args.load != "" and os.path.exists(args.load):
-        with open(args.load, 'rb') as f:
-            data = pickle.load(f)
-    else:
-        data = read_counts(args, sources_masks, og_sources, og_masks, rois)
+    if not (args.load != "" and os.path.exists(args.load)):
+        read_counts(args, sources_masks, og_sources, og_masks, rois)
 
-    from scipy.stats import spearmanr, pearsonr
-
-    print ("Data size", len(data["asi_1_pred"]))
-
-    do_stats(args, data)
+    do_stats(args)
