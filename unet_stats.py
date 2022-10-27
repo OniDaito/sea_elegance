@@ -651,7 +651,7 @@ if __name__ == "__main__":
 
     sources_masks, og_sources, og_masks, rois  = find_image_pairs(args)
 
-    if not (args.load != "" and os.path.exists(args.load)):
+    if not os.path.exists(args.load):
         read_counts(args, sources_masks, og_sources, og_masks, rois)
 
     do_stats(args)
