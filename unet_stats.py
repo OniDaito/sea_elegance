@@ -269,7 +269,7 @@ def read_counts(args, sources_masks, og_sources, og_masks, rois):
         model = model.to(device)
         model.eval()
 
-        with h5py.File('summary_stats.h5', 'w') as hf:
+        with h5py.File(args.save, 'w') as hf:
             asi_actual_hf = hf.create_dataset("asi_actual", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
             asj_actual_hf = hf.create_dataset("asj_actual", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
             asi_pred_hf = hf.create_dataset("asi_pred", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
@@ -279,7 +279,7 @@ def read_counts(args, sources_masks, og_sources, og_masks, rois):
             asj_false_pos_hf = hf.create_dataset("asj_false_pos", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
             asj_false_neg_hf = hf.create_dataset("asj_false_neg", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
 
-        with h5py.File('summary_stats.h5', 'a') as hf:
+        with h5py.File(args.save, 'a') as hf:
             asi_actual_hf = hf['asi_actual']
             asj_actual_hf = hf['asj_actual']
             asi_pred_hf = hf['asi_pred']
@@ -641,6 +641,7 @@ if __name__ == "__main__":
     parser.add_argument('--savedir', default=".")
     parser.add_argument('--base', default="")
     parser.add_argument('--rep', default="")
+    parser.add_argument('--save', default="summary_stats.h5")
     parser.add_argument(
         "--no-cuda", action="store_true", default=False, help="disables CUDA training"
     )
