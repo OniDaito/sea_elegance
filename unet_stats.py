@@ -473,7 +473,7 @@ def read_counts(args, sources_masks, og_sources, og_masks, rois):
                     asj_false_pos_hf[-count_asj_false_pos.shape[0]:] = count_asj_false_pos
 
                     count_asj_false_neg =  np.expand_dims(count_asj_false_neg, axis=0)
-                    asj_false_neg_hf.resize(asj_false_neg_hf[0] + count_asj_false_neg.shape[0] - 1, axis = 0)
+                    asj_false_neg_hf.resize(asj_false_neg_hf.shape[0] + count_asj_false_neg.shape[0] - 1, axis = 0)
                     asj_false_neg_hf[-count_asj_false_neg.shape[0]:] = count_asj_false_neg
                     
 
