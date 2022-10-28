@@ -324,14 +324,14 @@ def read_counts(args, sources_masks, og_sources, og_masks, rois):
         model.eval()
 
         with h5py.File(args.save, 'w') as hf:
-            asi_actual_hf = hf.create_dataset("asi_actual", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
-            asj_actual_hf = hf.create_dataset("asj_actual", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
-            asi_pred_hf = hf.create_dataset("asi_pred", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
-            asj_pred_hf = hf.create_dataset("asj_pred", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
-            asi_false_pos_hf = hf.create_dataset("asi_false_pos", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
-            asi_false_neg_hf = hf.create_dataset("asi_false_neg", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
-            asj_false_pos_hf = hf.create_dataset("asj_false_pos", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
-            asj_false_neg_hf = hf.create_dataset("asj_false_neg", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
+            asi_actual_hf = hf.create_dataset("asi_actual", (None, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
+            asj_actual_hf = hf.create_dataset("asj_actual", (None, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
+            asi_pred_hf = hf.create_dataset("asi_pred", (None, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
+            asj_pred_hf = hf.create_dataset("asj_pred", (None, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
+            asi_false_pos_hf = hf.create_dataset("asi_false_pos", (None, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
+            asi_false_neg_hf = hf.create_dataset("asi_false_neg", (None, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
+            asj_false_pos_hf = hf.create_dataset("asj_false_pos", (None, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
+            asj_false_neg_hf = hf.create_dataset("asj_false_neg", (None, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
 
         with h5py.File(args.save, 'a') as hf:
             asi_actual_hf = hf['asi_actual']
