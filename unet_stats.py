@@ -419,18 +419,20 @@ def read_counts(args, sources_masks, og_sources, og_masks, rois):
                     count_asi_real = asi_actual_mask * og_image
                     count_asj_real = asj_actual_mask * og_image
 
+                    print("Shape:", asi_actual_hf.shape)
+
                     # Append the results of real masks to og images
-                    asi_actual_hf.resize(asi_actual_hf.shape[0] + 1, axis = 0)
+                    asi_actual_hf.resize(asi_actual_hf.shape[0] + count_asi_real.shape[0], axis = 0)
                     asi_actual_hf[-count_asi_real.shape[0]:] = count_asi_real
 
-                    asj_actual_hf.resize(asj_actual_hf.shape[0] + 1, axis = 0)
+                    asj_actual_hf.resize(asj_actual_hf.shape[0] + count_asj_real.shape[0], axis = 0)
                     asj_actual_hf[-count_asj_real.shape[0]:] = count_asj_real
 
                     # Now append the predictions
-                    asi_pred_hf.resize(asi_pred_hf.shape[0] + 1, axis = 0)
+                    asi_pred_hf.resize(asi_pred_hf.shape[0] + count_asi_pred.shape[0], axis = 0)
                     asi_pred_hf[-count_asi_pred.shape[0]:] = count_asi_pred
 
-                    asj_pred_hf.resize(asj_pred_hf.shape[0] + 1, axis = 0)
+                    asj_pred_hf.resize(asj_pred_hf.shape[0] + count_asj_pred.shape[0], axis = 0)
                     asj_pred_hf[-count_asj_pred.shape[0]:] = count_asj_pred
 
                     # Now look at the false pos, false neg and get the scores
@@ -440,7 +442,7 @@ def read_counts(args, sources_masks, og_sources, og_masks, rois):
                     asj_pred_inv = torch.where(resized_prediction == 2, 0, 1)
 
                     asi_mask_inv = torch.where(target_image == 1, 0, 1)
-                    asj_mask_inv = torch.where(target_image == 3, 0, 1)
+                    asj_mask_inv = torch.where(target_image == 2, 0, 1)
 
                     asi_false_pos = asi_mask_inv * asi_pred_mask
                     asj_false_pos = asj_mask_inv * asj_pred_mask
