@@ -423,21 +423,29 @@ def read_counts(args, sources_masks, og_sources, og_masks, rois):
 
                     # Append the results of real masks to og images
                     count_asi_real =  np.expand_dims(count_asi_real, axis=0)
-                    asi_actual_hf.resize(asi_actual_hf.shape[0] + count_asi_real.shape[0] - 1, axis = 0)
                     asi_actual_hf[-count_asi_real.shape[0]:] = count_asi_real
+                    
+                    if fidx + 1 < len(sources_masks):
+                        asi_actual_hf.resize(asi_actual_hf.shape[0] + count_asi_real.shape[0] - 1, axis = 0)
 
                     count_asj_real =  np.expand_dims(count_asj_real, axis=0)
-                    asj_actual_hf.resize(asj_actual_hf.shape[0] + count_asj_real.shape[0] - 1, axis = 0)
                     asj_actual_hf[-count_asj_real.shape[0]:] = count_asj_real
+                    
+                    if fidx + 1 < len(sources_masks):
+                        asj_actual_hf.resize(asj_actual_hf.shape[0] + count_asj_real.shape[0] - 1, axis = 0)
 
                     # Now append the predictions
                     count_asi_pred =  np.expand_dims(count_asi_pred, axis=0)
-                    asi_pred_hf.resize(asi_pred_hf.shape[0] + count_asi_pred.shape[0] - 1, axis = 0)
                     asi_pred_hf[-count_asi_pred.shape[0]:] = count_asi_pred
+                    
+                    if fidx + 1 < len(sources_masks):
+                        asi_pred_hf.resize(asi_pred_hf.shape[0] + count_asi_pred.shape[0] - 1, axis = 0)
 
                     count_asj_pred =  np.expand_dims(count_asj_pred, axis=0)
-                    asj_pred_hf.resize(asj_pred_hf.shape[0] + count_asj_pred.shape[0] - 1, axis = 0)
                     asj_pred_hf[-count_asj_pred.shape[0]:] = count_asj_pred
+                
+                    if fidx + 1 < len(sources_masks):
+                        asj_pred_hf.resize(asj_pred_hf.shape[0] + count_asj_pred.shape[0] - 1, axis = 0)
 
                     # Now look at the false pos, false neg and get the scores
                     # Commented out for now as memory usage is too high
@@ -461,21 +469,30 @@ def read_counts(args, sources_masks, og_sources, og_masks, rois):
                     count_asj_false_neg = asj_false_neg * og_image
 
                     count_asi_false_pos =  np.expand_dims(count_asi_false_pos, axis=0)
-                    asi_false_pos_hf.resize(asi_false_pos_hf.shape[0] + count_asi_false_pos.shape[0] - 1, axis = 0)
                     asi_false_pos_hf[-count_asi_false_pos.shape[0]:] = count_asi_false_pos
 
+                    if fidx + 1 < len(sources_masks):
+                        asi_false_pos_hf.resize(asi_false_pos_hf.shape[0] + count_asi_false_pos.shape[0], axis = 0)
+
                     count_asi_false_neg =  np.expand_dims(count_asi_false_neg, axis=0)
-                    asi_false_neg_hf.resize(asi_false_neg_hf.shape[0] + count_asi_false_neg.shape[0] - 1, axis = 0)
                     asi_false_neg_hf[-count_asi_false_neg.shape[0]:] = count_asi_false_neg
+                    
+                    if fidx + 1 < len(sources_masks):
+                        asi_false_neg_hf.resize(asi_false_neg_hf.shape[0] + count_asi_false_neg.shape[0], axis = 0)
 
                     count_asj_false_pos =  np.expand_dims(count_asj_false_pos, axis=0)
-                    asj_false_pos_hf.resize(asj_false_pos_hf.shape[0] + count_asj_false_pos.shape[0] - 1, axis = 0)
                     asj_false_pos_hf[-count_asj_false_pos.shape[0]:] = count_asj_false_pos
+                    
+                    if fidx + 1 < len(sources_masks):
+                        asj_false_pos_hf.resize(asj_false_pos_hf.shape[0] + count_asj_false_pos.shape[0], axis = 0)
 
                     count_asj_false_neg =  np.expand_dims(count_asj_false_neg, axis=0)
-                    asj_false_neg_hf.resize(asj_false_neg_hf.shape[0] + count_asj_false_neg.shape[0] - 1, axis = 0)
                     asj_false_neg_hf[-count_asj_false_neg.shape[0]:] = count_asj_false_neg
                     
+                    if fidx + 1 < len(sources_masks):
+                        asj_false_neg_hf.resize(asj_false_neg_hf.shape[0] + count_asj_false_neg.shape[0], axis = 0)
+
+           
 
 def do_stats(args):
     ''' Now we have the data, lets do the stats on it.'''
