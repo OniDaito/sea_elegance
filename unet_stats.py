@@ -426,26 +426,26 @@ def read_counts(args, sources_masks, og_sources, og_masks, rois):
                     asi_actual_hf[-count_asi_real.shape[0]:] = count_asi_real
                     
                     if fidx + 1 < len(sources_masks):
-                        asi_actual_hf.resize(asi_actual_hf.shape[0] + count_asi_real.shape[0] - 1, axis = 0)
+                        asi_actual_hf.resize(asi_actual_hf.shape[0] + count_asi_real.shape[0], axis = 0)
 
                     count_asj_real =  np.expand_dims(count_asj_real, axis=0)
                     asj_actual_hf[-count_asj_real.shape[0]:] = count_asj_real
                     
                     if fidx + 1 < len(sources_masks):
-                        asj_actual_hf.resize(asj_actual_hf.shape[0] + count_asj_real.shape[0] - 1, axis = 0)
+                        asj_actual_hf.resize(asj_actual_hf.shape[0] + count_asj_real.shape[0], axis = 0)
 
                     # Now append the predictions
                     count_asi_pred =  np.expand_dims(count_asi_pred, axis=0)
                     asi_pred_hf[-count_asi_pred.shape[0]:] = count_asi_pred
                     
                     if fidx + 1 < len(sources_masks):
-                        asi_pred_hf.resize(asi_pred_hf.shape[0] + count_asi_pred.shape[0] - 1, axis = 0)
+                        asi_pred_hf.resize(asi_pred_hf.shape[0] + count_asi_pred.shape[0], axis = 0)
 
                     count_asj_pred =  np.expand_dims(count_asj_pred, axis=0)
                     asj_pred_hf[-count_asj_pred.shape[0]:] = count_asj_pred
                 
                     if fidx + 1 < len(sources_masks):
-                        asj_pred_hf.resize(asj_pred_hf.shape[0] + count_asj_pred.shape[0] - 1, axis = 0)
+                        asj_pred_hf.resize(asj_pred_hf.shape[0] + count_asj_pred.shape[0], axis = 0)
 
                     # Now look at the false pos, false neg and get the scores
                     # Commented out for now as memory usage is too high
