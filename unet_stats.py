@@ -240,7 +240,7 @@ def find_image_pairs(args):
             prefix_to_roi[final] = roi
 
     for idx in dataset:
-        print(idx)
+        # print(idx)
         path = idx_to_mask[idx]
         head, tail = os.path.split(path)
         head, pref = os.path.split(head)
@@ -269,6 +269,8 @@ def find_image_pairs(args):
                 og_masks.append(idx_to_mask[idx])
                 rois.append(prefix_to_roi[idx_to_prefix[idx]])
     
+
+    print("Dataset size:", len(og_sources))
     return sources_masks, og_sources, og_masks, rois
 
 def crop_image(image, roi, target_size):
@@ -407,6 +409,9 @@ def read_counts(args, sources_masks, og_sources, og_masks, rois):
 
                     asi_actual_mask = torch.where(target_image == 1, 1, 0)
                     asj_actual_mask = torch.where(target_image == 2, 1, 0)
+
+                    if (args.back):
+                        og_image = og_image - background_value
 
                     count_asi_pred = asi_pred_mask * og_image
                     count_asj_pred = asj_pred_mask * og_image
