@@ -324,14 +324,14 @@ def read_counts(args, sources_masks, og_sources, og_masks, rois):
         model.eval()
 
         with h5py.File(args.save, 'w') as hf:
-            asi_actual_hf = hf.create_dataset("asi_actual", (None, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
-            asj_actual_hf = hf.create_dataset("asj_actual", (None, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
-            asi_pred_hf = hf.create_dataset("asi_pred", (None, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
-            asj_pred_hf = hf.create_dataset("asj_pred", (None, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
-            asi_false_pos_hf = hf.create_dataset("asi_false_pos", (None, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
-            asi_false_neg_hf = hf.create_dataset("asi_false_neg", (None, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
-            asj_false_pos_hf = hf.create_dataset("asj_false_pos", (None, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
-            asj_false_neg_hf = hf.create_dataset("asj_false_neg", (None, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
+            asi_actual_hf = hf.create_dataset("asi_actual", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
+            asj_actual_hf = hf.create_dataset("asj_actual", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
+            asi_pred_hf = hf.create_dataset("asi_pred", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
+            asj_pred_hf = hf.create_dataset("asj_pred", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
+            asi_false_pos_hf = hf.create_dataset("asi_false_pos", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
+            asi_false_neg_hf = hf.create_dataset("asi_false_neg", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
+            asj_false_pos_hf = hf.create_dataset("asj_false_pos", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
+            asj_false_neg_hf = hf.create_dataset("asj_false_neg", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
 
         with h5py.File(args.save, 'a') as hf:
             asi_actual_hf = hf['asi_actual']
@@ -419,26 +419,24 @@ def read_counts(args, sources_masks, og_sources, og_masks, rois):
                     count_asi_real = asi_actual_mask * og_image
                     count_asj_real = asj_actual_mask * og_image
 
-                  
-
                     print("Shape:", asi_actual_hf.shape)
 
                     # Append the results of real masks to og images
                     count_asi_real =  np.expand_dims(count_asi_real, axis=0)
-                    asi_actual_hf.resize(asi_actual_hf.shape[0] + count_asi_real.shape[0], axis = 0)
+                    asi_actual_hf.resize(asi_actual_hf.shape[0] + count_asi_real.shape[0] - 1, axis = 0)
                     asi_actual_hf[-count_asi_real.shape[0]:] = count_asi_real
 
                     count_asj_real =  np.expand_dims(count_asj_real, axis=0)
-                    asj_actual_hf.resize(asj_actual_hf.shape[0] + count_asj_real.shape[0], axis = 0)
+                    asj_actual_hf.resize(asj_actual_hf.shape[0] + count_asj_real.shape[0] - 1, axis = 0)
                     asj_actual_hf[-count_asj_real.shape[0]:] = count_asj_real
 
                     # Now append the predictions
                     count_asi_pred =  np.expand_dims(count_asi_pred, axis=0)
-                    asi_pred_hf.resize(asi_pred_hf.shape[0] + count_asi_pred.shape[0], axis = 0)
+                    asi_pred_hf.resize(asi_pred_hf.shape[0] + count_asi_pred.shape[0] - 1, axis = 0)
                     asi_pred_hf[-count_asi_pred.shape[0]:] = count_asi_pred
 
                     count_asj_pred =  np.expand_dims(count_asj_pred, axis=0)
-                    asj_pred_hf.resize(asj_pred_hf.shape[0] + count_asj_pred.shape[0], axis = 0)
+                    asj_pred_hf.resize(asj_pred_hf.shape[0] + count_asj_pred.shape[0] - 1, axis = 0)
                     asj_pred_hf[-count_asj_pred.shape[0]:] = count_asj_pred
 
                     # Now look at the false pos, false neg and get the scores
@@ -463,19 +461,19 @@ def read_counts(args, sources_masks, og_sources, og_masks, rois):
                     count_asj_false_neg = asj_false_neg * og_image
 
                     count_asi_false_pos =  np.expand_dims(count_asi_false_pos, axis=0)
-                    asi_false_pos_hf.resize(count_asi_false_pos.shape[0] + 1, axis = 0)
+                    asi_false_pos_hf.resize(asi_false_pos_hf.shape[0] + count_asi_false_pos.shape[0] - 1, axis = 0)
                     asi_false_pos_hf[-count_asi_false_pos.shape[0]:] = count_asi_false_pos
 
                     count_asi_false_neg =  np.expand_dims(count_asi_false_neg, axis=0)
-                    asi_false_neg_hf.resize(count_asi_false_neg.shape[0] + 1, axis = 0)
+                    asi_false_neg_hf.resize(asi_false_neg_hf.shape[0] + count_asi_false_neg.shape[0] - 1, axis = 0)
                     asi_false_neg_hf[-count_asi_false_neg.shape[0]:] = count_asi_false_neg
 
                     count_asj_false_pos =  np.expand_dims(count_asj_false_pos, axis=0)
-                    asj_false_pos_hf.resize(count_asj_false_pos.shape[0] + 1, axis = 0)
+                    asj_false_pos_hf.resize(asj_false_pos_hf.shape[0] + count_asj_false_pos.shape[0] - 1, axis = 0)
                     asj_false_pos_hf[-count_asj_false_pos.shape[0]:] = count_asj_false_pos
 
                     count_asj_false_neg =  np.expand_dims(count_asj_false_neg, axis=0)
-                    asj_false_neg_hf.resize(count_asj_false_neg.shape[0] + 1, axis = 0)
+                    asj_false_neg_hf.resize(asj_false_neg_hf[0] + count_asj_false_neg.shape[0] - 1, axis = 0)
                     asj_false_neg_hf[-count_asj_false_neg.shape[0]:] = count_asj_false_neg
                     
 
