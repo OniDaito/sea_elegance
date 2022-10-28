@@ -15,6 +15,7 @@ python unet_stats.py --load summary_stats.h5
 """
 
 import pickle
+from turtle import back
 import torch
 import numpy as np
 import argparse
@@ -103,6 +104,57 @@ data_files = [
 ["/phd/wormz/queelim/ins-6-mCherry_2/20180308-QL849-d0.0", "/phd/wormz/queelim/ins-6-mCherry_2/Annotations/Reesha_analysis/20180308-QL849-d0.0"]
 ]
 
+def find_background(og_image):
+    kernel_dia = 3
+    kernel_rad = 1
+    modes = []
+
+    for z in range (kernel_rad, og_image.shape[0] - kernel_rad):
+        for y in range (kernel_rad, og_image.shape[1] - kernel_rad):
+            for x in range (kernel_rad, og_image.shape[2] - kernel_rad):
+
+                # Add up all the pixels - 27 of them
+                avg = og_image[z][y][x]
+                # First 9
+                avg += og_image[z-kernel_rad][y-kernel_rad][x-kernel_rad]
+                avg += og_image[z-kernel_rad][y-kernel_rad][x]
+                avg += og_image[z-kernel_rad][y-kernel_rad][x+kernel_rad]
+                avg += og_image[z-kernel_rad][y][x-kernel_rad]
+                avg += og_image[z-kernel_rad][y][x]
+                avg += og_image[z-kernel_rad][y][x+kernel_rad]
+                avg += og_image[z-kernel_rad][y+kernel_rad][x-kernel_rad]
+                avg += og_image[z-kernel_rad][y+kernel_rad][x]
+                avg += og_image[z-kernel_rad][y+kernel_rad][x+kernel_rad]
+
+                # Mid 8
+                avg += og_image[z][y-kernel_rad][x-kernel_rad]
+                avg += og_image[z][y-kernel_rad][x]
+                avg += og_image[z][y-kernel_rad][x+kernel_rad]
+                avg += og_image[z][y][x-kernel_rad]
+                avg += og_image[z][y][x+kernel_rad]
+                avg += og_image[z][y+kernel_rad][x-kernel_rad]
+                avg += og_image[z][y+kernel_rad][x]
+                avg += og_image[z][y+kernel_rad][x+kernel_rad]
+
+                # Last 9
+                avg += og_image[z+kernel_rad][y-kernel_rad][x-kernel_rad]
+                avg += og_image[z+kernel_rad][y-kernel_rad][x]
+                avg += og_image[z+kernel_rad][y-kernel_rad][x+kernel_rad]
+                avg += og_image[z+kernel_rad][y][x-kernel_rad]
+                avg += og_image[z+kernel_rad][y][x]
+                avg += og_image[z+kernel_rad][y][x+kernel_rad]
+                avg += og_image[z+kernel_rad][y+kernel_rad][x-kernel_rad]
+                avg += og_image[z+kernel_rad][y+kernel_rad][x]
+                avg += og_image[z+kernel_rad][y+kernel_rad][x+kernel_rad]
+
+                avg /= 27.0
+                modes.append(int(avg))
+            
+        
+    vals, counts = np.unique(modes, return_counts=True)
+    mode_value = np.argwhere(counts == np.max(counts))
+    return mode_value
+    
 
 def find_image_pairs(args):
     ''' Find all the images we need and pair them up properly with correct paths.
@@ -302,6 +354,12 @@ def read_counts(args, sources_masks, og_sources, og_masks, rois):
                     target_path = target_path.replace(args.base, args.rep)
 
                 og_image = load_fits(og_path, dtype=torch.float32)
+                background_value = 0
+
+                if (args.back):
+                    background_value = find_background(og_image)
+                    print("Background value:", background_value)
+
                 roi = rois[fidx]
             
                 input_image = load_fits(source_path, dtype=torch.float32)
@@ -323,7 +381,7 @@ def read_counts(args, sources_masks, og_sources, og_masks, rois):
 
                     #with open('prediction.npy', 'wb') as f:
                     #   np.save(f, prediction.detach().cpu().numpy())
-                    assert(not (torch.all(prediction == 0).item()))
+                    assert(not(torch.all(prediction == 0).item()))
 
                     classes = prediction[0].detach().cpu().squeeze()
                     classes = F.one_hot(classes.argmax(dim=0), nclasses).permute(3, 0, 1, 2)
@@ -418,10 +476,13 @@ def do_stats(args):
         asj_false_pos_hf = hf['asj_false_pos']
         asj_false_neg_hf = hf['asj_false_neg']
 
-        asi_real =  np.sum(np.array(asi_actual_hf), axis=(1,2,3))
-        asi_pred =  np.sum(np.array(asi_pred_hf), axis=(1,2,3))
-        asj_real =  np.sum(np.array(asj_actual_hf), axis=(1,2,3))
-        asj_pred =  np.sum(np.array(asj_pred_hf), axis=(1,2,3))
+        # Always ignore the first - it's an empty array cos HDF5!
+        asi_real = np.sum(np.array(asi_actual_hf), axis=(1,2,3))
+        asi_pred = np.sum(np.array(asi_pred_hf), axis=(1,2,3))
+        asj_real = np.sum(np.array(asj_actual_hf), axis=(1,2,3))
+        asj_pred = np.sum(np.array(asj_pred_hf), axis=(1,2,3))
+
+        print("Set size:", len(asi_real))
 
         print("Correlations - spearmans & pearsons - ASI, ASJ")
         asi_combo_cor = spearmanr(asi_real, asi_pred)
@@ -601,7 +662,7 @@ def do_stats(args):
 
         '''
 
-        '''
+        
         # Multiclass alignments
         sns.set_theme(style="whitegrid")
         fig, axes = plt.subplots(2, 2)
@@ -610,9 +671,9 @@ def do_stats(args):
         sns.set_theme(style="whitegrid")
         fig, axes = plt.subplots(1, 2)
 
-        individuals = list(range(len(data["asi_1_actual"])))
-        df0 = pd.DataFrame({"individual": individuals, "asi_combo_real": asi_combo_real, "asi_combo_pred": asi_combo_pred})
-        df1 = pd.DataFrame({"individual": individuals, "asj_combo_real": asj_combo_real, "asj_combo_pred": asj_combo_pred})
+        individuals = list(range(len(asi_real)))
+        df0 = pd.DataFrame({"individual": individuals, "asi_real": asi_real, "asi_pred": asi_pred})
+        df1 = pd.DataFrame({"individual": individuals, "asj_real": asj_real, "asj_pred": asj_pred})
     
         axes[0].xaxis.set_label_text("asi base luminance")
         axes[1].xaxis.set_label_text("asj base luminance")
@@ -626,11 +687,11 @@ def do_stats(args):
         #sns.lineplot(x="individual", y='value', hue='variable', 
         #         data=pd.melt(df1, ['individual']), ax=axes[1])
 
-        sns.scatterplot(data=df0, x="asi_combo_real", y="asi_combo_pred", ax=axes[0])
-        sns.scatterplot(data=df1, x="asj_combo_real", y="asj_combo_pred", ax=axes[1])
+        sns.scatterplot(data=df0, x="asi_real", y="asi_pred", ax=axes[0])
+        sns.scatterplot(data=df1, x="asj_real", y="asj_pred", ax=axes[1])
         
         plt.show()
-        '''
+        
 
 
 if __name__ == "__main__":
@@ -644,6 +705,9 @@ if __name__ == "__main__":
     parser.add_argument('--save', default="summary_stats.h5")
     parser.add_argument(
         "--no-cuda", action="store_true", default=False, help="disables CUDA training"
+    )
+    parser.add_argument(
+        "--back", action="store_true", default=False, help="Background subtraction",
     )
     
     parser.add_argument('--load', default="summary_stats.h5")
