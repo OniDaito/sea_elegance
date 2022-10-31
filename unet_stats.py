@@ -443,7 +443,7 @@ def read_counts(args, sources_masks, og_sources, og_masks, rois):
                     asj_actual_hf[-asj_actual_mask.shape[0]:] = asj_actual_mask
                     
                     if fidx + 1 < len(sources_masks):
-                        asj_actual_mask.resize(asj_actual_hf.shape[0] + asj_actual_mask.shape[0], axis = 0)
+                        asj_actual_hf.resize(asj_actual_hf.shape[0] + asj_actual_mask.shape[0], axis = 0)
 
                     # Now append the predictions
                     asi_pred_mask =  np.expand_dims(asi_pred_mask, axis=0)
