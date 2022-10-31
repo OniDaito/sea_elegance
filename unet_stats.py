@@ -355,6 +355,8 @@ def read_counts(args, sources_masks, og_sources, og_masks, rois):
             og_back_hf = hf.create_dataset("og_back", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
             back_hf = hf.create_dataset("back", (1, 1), maxshape=(None, 1))
 
+        with open(args.save + ".csv", "w") as w:
+            w.write("idx,src,mask,Overlay,Overlap,Dice,Jaccard,Dice1,Jacc1,tp1,tn1,fp1,fn1,Dice2,Jacc2,tp2,tn2,fp2,fn2\n")
 
         with h5py.File(args.save + ".h5", 'a') as hf:
             asi_actual_hf = hf['asi_actual']
@@ -483,55 +485,8 @@ def read_counts(args, sources_masks, og_sources, og_masks, rois):
 
                     scores = compare_masks(target_image.numpy(), resized_prediction.numpy())
 
-                    with open(args.save + "_scores.csv", "a") as w:
+                    with open(args.save + ".csv", "a") as w:
                         w.write(str(fidx) + "," + source_path + "," + target_path + "," + scores + "\n")
-
-                    # Now look at the false pos, false neg and get the scores
-                    # Commented out for now as memory usage is too high
-                    
-                    '''
-                    asi_pred_inv = torch.where(resized_prediction == 1, 0, 1)
-                    asj_pred_inv = torch.where(resized_prediction == 2, 0, 1)
-
-                    asi_mask_inv = torch.where(target_image == 1, 0, 1)
-                    asj_mask_inv = torch.where(target_image == 2, 0, 1)
-
-                    asi_false_pos = asi_mask_inv * asi_pred_mask
-                    asj_false_pos = asj_mask_inv * asj_pred_mask
-
-                    asi_false_neg = asi_actual_mask * asi_pred_inv
-                    asj_false_neg = asj_actual_mask * asj_pred_inv
-
-                    count_asi_false_pos = asi_false_pos * og_image
-                    count_asi_false_neg = asi_false_neg * og_image
-
-                    count_asj_false_pos = asj_false_pos * og_image
-                    count_asj_false_neg = asj_false_neg * og_image
-
-                    count_asi_false_pos =  np.expand_dims(count_asi_false_pos, axis=0)
-                    asi_false_pos_hf[-count_asi_false_pos.shape[0]:] = count_asi_false_pos
-
-                    if fidx + 1 < len(sources_masks):
-                        asi_false_pos_hf.resize(asi_false_pos_hf.shape[0] + count_asi_false_pos.shape[0], axis = 0)
-
-                    count_asi_false_neg =  np.expand_dims(count_asi_false_neg, axis=0)
-                    asi_false_neg_hf[-count_asi_false_neg.shape[0]:] = count_asi_false_neg
-                    
-                    if fidx + 1 < len(sources_masks):
-                        asi_false_neg_hf.resize(asi_false_neg_hf.shape[0] + count_asi_false_neg.shape[0], axis = 0)
-
-                    count_asj_false_pos =  np.expand_dims(count_asj_false_pos, axis=0)
-                    asj_false_pos_hf[-count_asj_false_pos.shape[0]:] = count_asj_false_pos
-                    
-                    if fidx + 1 < len(sources_masks):
-                        asj_false_pos_hf.resize(asj_false_pos_hf.shape[0] + count_asj_false_pos.shape[0], axis = 0)
-
-                    count_asj_false_neg =  np.expand_dims(count_asj_false_neg, axis=0)
-                    asj_false_neg_hf[-count_asj_false_neg.shape[0]:] = count_asj_false_neg
-                    
-                    if fidx + 1 < len(sources_masks):
-                        asj_false_neg_hf.resize(asj_false_neg_hf.shape[0] + count_asj_false_neg.shape[0], axis = 0)
-                    '''
 
 
 def compare_masks(original: np.ndarray, predicted: np.ndarray):
@@ -586,13 +541,12 @@ def compare_masks(original: np.ndarray, predicted: np.ndarray):
     return score
 
 
-
 def do_stats(args):
-    ''' Now we have the data, lets do the stats on it.'''
+    ''' Perform the statistics on the HDF5 data.'''
     from scipy.stats import spearmanr, pearsonr
     idx = 0
 
-    with h5py.File(args.load, 'r') as hf:
+    with h5py.File(args.load + ".h5", 'r') as hf:
         asi_actual = np.array(hf['asi_actual'])
         asj_actual = np.array(hf['asj_actual'])
         asi_pred = np.array(hf['asi_pred'])
@@ -618,17 +572,17 @@ def do_stats(args):
         print(asi_combo_cor, asj_combo_cor)
 
         # Always ignore the first - it's an empty array cos HDF5!
-        asi_real_count = np.sum(asi_actual * og_back, axis=(1,2,3))
-        asi_pred_count = np.sum(asi_pred * og_back, axis=(1,2,3))
-        asj_real_count = np.sum(asj_actual * og_back, axis=(1,2,3))
-        asj_pred_count = np.sum(asj_pred * og_back, axis=(1,2,3))
+        asi_real_count_back = np.sum(asi_actual * og_back, axis=(1,2,3))
+        asi_pred_count_back = np.sum(asi_pred * og_back, axis=(1,2,3))
+        asj_real_count_back = np.sum(asj_actual * og_back, axis=(1,2,3))
+        asj_pred_count_back = np.sum(asj_pred * og_back, axis=(1,2,3))
 
         print("Correlations - spearmans & pearsons - ASI, ASJ - background removed")
-        asi_combo_cor = spearmanr(asi_real_count, asi_pred_count)
-        asj_combo_cor = spearmanr(asj_real_count, asj_pred_count)
+        asi_combo_cor = spearmanr(asi_real_count_back, asi_pred_count_back)
+        asj_combo_cor = spearmanr(asj_real_count_back, asj_pred_count_back)
         print(asi_combo_cor, asj_combo_cor)
-        asi_combo_cor = pearsonr(asi_real_count, asi_pred_count)
-        asj_combo_cor = pearsonr(asj_real_count, asj_pred_count)
+        asi_combo_cor = pearsonr(asi_real_count_back, asi_pred_count_back)
+        asj_combo_cor = pearsonr(asj_real_count_back, asj_pred_count_back)
         print(asi_combo_cor, asj_combo_cor)
 
         border_asi_values_actual = []
@@ -637,11 +591,6 @@ def do_stats(args):
         border_asi_values_pred = []
         border_asj_values_pred = []
 
-
-        with open("eval_log.csv", "w") as w:
-            w.write("idx,src,mask,Overlay,Overlap,Dice,Jaccard,Dice1,Jacc1,tp1,tn1,fp1,fn1,Dice2,Jacc2,tp2,tn2,fp2,fn2\n")
-
-     
         # Find the border
         for idx in range(len(asi_real_count)):
             asi_pred_single = asi_pred[idx]
@@ -671,51 +620,58 @@ def do_stats(args):
             #save_fits(asi_actual_single, "asi_actual_" + str(idx) + ".fits")
             #save_fits(asj_pred_single, "asj_" + str(idx) + ".fits")
 
-            
-
         print("ASI Actual Border mean median std", np.mean(border_asi_values_actual), np.median(border_asi_values_actual), np.std(border_asi_values_actual))
         print("ASJ Actual Border mean median std", np.mean(border_asj_values_actual), np.median(border_asj_values_actual), np.std(border_asj_values_actual))
         print("ASI Pred Border mean median std", np.mean(border_asi_values_pred), np.median(border_asi_values_pred), np.std(border_asi_values_pred))
         print("ASJ Pred Border mean median std", np.mean(border_asj_values_pred), np.median(border_asi_values_pred), np.std(border_asi_values_pred))
 
+        # Look at the false positives and false negatives
+        asi_pred_inv = np.where(asi_pred == 1, 0, 1)
+        asj_pred_inv = np.where(asj_pred == 1, 0, 1)
 
-        '''
+        asi_mask_inv = np.where(asi_actual == 1, 0, 1)
+        asj_mask_inv = np.where(asj_actual == 1, 0, 1)
 
-        asi_false_pos_count = np.sum(np.array(asi_false_pos_hf), axis=(1,2,3))
-        
-        print("ASI False Pos Mean / Median / Std :", np.mean(asi_false_pos_count), np.median(asi_false_pos_count), np.std(asi_false_pos_count))
-        print("ASI False Pos Median as % of original :",  np.median(asi_false_pos_count) / np.median(asi_real) * 100.0)
+        asi_false_pos = asi_mask_inv * asi_pred
+        asj_false_pos = asj_mask_inv * asj_pred
 
-        asj_false_pos_count = np.sum(np.array(asj_false_pos_hf), axis=(1,2,3))
+        asi_false_neg = asi_actual * asi_pred_inv
+        asj_false_neg = asj_actual * asj_pred_inv
 
-        print("ASJ False Pos Mean / Median / Std :", np.mean(asj_false_pos_count), np.median(asj_false_pos_count), np.std(asj_false_pos_count))
-        print("ASJ False Pos Median as % of original :",  np.median(asj_false_pos_count) / np.median(asj_real) * 100.0)
+        # Pixel values in these areas
+        ts = asi_false_neg.shape
+        ds = ts[0]
+        ts = ts[1] * ts[2] * ts[3]
+        count_asi_false_pos = asi_false_pos * og; count_asi_false_pos = count_asi_false_pos.flatten(); count_asi_false_pos = count_asi_false_pos[count_asi_false_pos != 0]
+        count_asi_false_neg = asi_false_neg * og; count_asi_false_neg = count_asi_false_neg.flatten(); count_asi_false_neg = count_asi_false_neg[count_asi_false_neg != 0]
 
-        sig_value = 291
+        count_asj_false_pos = asj_false_pos * og; count_asj_false_pos = count_asj_false_pos.flatten(); count_asj_false_pos = count_asj_false_pos[count_asj_false_pos != 0]
+        count_asj_false_neg = asj_false_neg * og; count_asj_false_neg = count_asj_false_neg.flatten(); count_asj_false_neg = count_asj_false_neg[count_asj_false_neg != 0]
 
-        above_actual = np.sum(np.where(np.array(asi_actual_hf) >= sig_value, 1, 0))
-        asi_actual_mask = np.where(np.array(asi_actual_hf) != 0, 1, 0)
-        below_actual = np.sum( np.where(np.array(asi_actual_hf) < sig_value, 1, 0) * asi_actual_mask)
+        print("ASI False Pos Mean / Median / Std :", np.mean(count_asi_false_pos), np.median(count_asi_false_pos), np.std(count_asi_false_pos))
+        print("ASJ False Pos Mean / Median / Std :", np.mean(count_asj_false_pos), np.median(count_asj_false_pos), np.std(count_asj_false_pos))
 
-        above_pred = np.sum(np.where(np.array(asi_pred_hf) >= sig_value, 1, 0))
-        asi_pred_mask = np.where(np.array(asi_pred_hf) != 0, 1, 0)
-        below_pred = np.sum(np.where(np.array(asi_pred_hf) < sig_value, 1, 0) * asi_pred_mask)
-        print("ASI percentage below sig for base and pred", below_actual / (above_actual + below_actual) * 100.0,  below_pred / (above_pred + below_pred) * 100.0)
+        print("ASI False Neg Mean / Median / Std :", np.mean(count_asi_false_neg), np.median(count_asi_false_neg), np.std(count_asi_false_neg))
+        print("ASJ False Neg Mean / Median / Std :", np.mean(count_asj_false_neg), np.median(count_asj_false_neg), np.std(count_asj_false_neg))
 
-        print("ASI Pred vs Actual Size ", np.sum(asi_pred_mask) / np.sum(asi_actual_mask))
+        asi_real_areas = np.sum(asi_actual, axis=(1,2,3))
+        asi_pred_areas = np.sum(asi_pred, axis=(1,2,3))
+        asj_real_areas = np.sum(asi_actual, axis=(1,2,3))
+        asj_pred_areas = np.sum(asj_pred, axis=(1,2,3))
+        print("ASI Actual Areas Mean / Median / Std :", np.mean(asi_real_areas), np.median(asi_real_areas), np.std(asi_real_areas))
+        print("ASI Pred Areas Mean / Median / Std :", np.mean(asi_pred_areas), np.median(asi_pred_areas), np.std(asi_pred_areas))
+        print("ASJ Actual Areas Mean / Median / Std :", np.mean(asj_real_areas), np.median(asj_real_areas), np.std(asj_real_areas))
+        print("ASJ Pred Areas Mean / Median / Std :", np.mean(asj_pred_areas), np.median(asj_pred_areas), np.std(asj_pred_areas))
 
-        above_actual = np.sum(np.where(np.array(asj_actual_hf) >= sig_value, 1, 0))
-        asj_actual_mask = np.where(np.array(asj_actual_hf) != 0, 1, 0)
-        below_actual = np.sum(np.where(np.array(asj_actual_hf) < sig_value, 1, 0) * asj_actual_mask)
+        asi_false_pos_areas = np.sum(asi_false_pos, axis=(1,2,3))
+        asi_false_neg_areas = np.sum(asi_false_neg, axis=(1,2,3))
+        asj_false_pos_areas = np.sum(asj_false_pos, axis=(1,2,3))
+        asj_false_neg_areas = np.sum(asj_false_neg, axis=(1,2,3))
 
-        above_pred = np.sum(np.where(np.array(asj_pred_hf) >= sig_value, 1, 0))
-        asj_pred_mask = np.where(np.array(asj_pred_hf) != 0, 1, 0)
-        below_pred = np.sum(np.where(np.array(asj_pred_hf) < sig_value, 1, 0) * asj_pred_mask)
-        print("ASJ percentage below sig for base and pred",  below_actual / (above_actual + below_actual) * 100.0,  below_pred / (above_pred + below_pred) * 100.0)
-
-        print("ASJ Pred vs Actual Size ", np.sum(asj_pred_mask) / np.sum(asj_actual_mask))
-        '''
-
+        print("ASI False Pos Areas Mean / Median / Std :", np.mean(asi_false_pos_areas), np.median(asi_false_pos_areas), np.std(asi_false_pos_areas))
+        print("ASI False Neg Areas Mean / Median / Std :", np.mean(asi_false_neg_areas), np.median(asi_false_neg_areas), np.std(asi_false_neg_areas))
+        print("ASJ False Pos Areas Mean / Median / Std :", np.mean(asj_false_pos_areas), np.median(asj_false_pos_areas), np.std(asj_false_pos_areas))
+        print("ASJ False Neg Areas Mean / Median / Std :", np.mean(asj_false_neg_areas), np.median(asj_false_neg_areas), np.std(asj_false_neg_areas))
 
         '''
 
@@ -876,15 +832,10 @@ def do_stats(args):
         print("ASI to ASJ Pred  KL-Div, Jensen", kldiv, jensen)
 
         '''
-
-        '''
-        # Multiclass alignments
-        sns.set_theme(style="whitegrid")
-        fig, axes = plt.subplots(2, 2)
-
-        # Joined alignments
+        # Plot the Predicted against the Original
         sns.set_theme(style="whitegrid")
         fig, axes = plt.subplots(1, 2)
+        fig.set_size_inches((8,6))
 
         individuals = list(range(len(asi_real_count)))
         df0 = pd.DataFrame({"individual": individuals, "asi_real": asi_real_count, "asi_pred": asi_pred_count})
@@ -896,17 +847,31 @@ def do_stats(args):
         axes[0].yaxis.set_label_text("asi pred luminance")
         axes[1].yaxis.set_label_text("asj pred luminance")
 
-        #sns.lineplot(x="individual", y='value', hue='variable', 
-        #         data=pd.melt(df0, ['individual']), ax=axes[0])
-    
-        #sns.lineplot(x="individual", y='value', hue='variable', 
-        #         data=pd.melt(df1, ['individual']), ax=axes[1])
 
         sns.scatterplot(data=df0, x="asi_real", y="asi_pred", ax=axes[0])
         sns.scatterplot(data=df1, x="asj_real", y="asj_pred", ax=axes[1])
         
-        plt.show()
-        '''
+        plt.savefig(args.save + 'asi_vs_asj.png')
+        
+        # Plot the Predicted against the Original with background removal
+        sns.set_theme(style="whitegrid")
+        fig, axes = plt.subplots(1, 2)
+        fig.set_size_inches((8,6))
+
+        individuals = list(range(len(asi_real_count)))
+        df0 = pd.DataFrame({"individual": individuals, "asi_real": asi_real_count_back, "asi_pred": asi_pred_count_back})
+        df1 = pd.DataFrame({"individual": individuals, "asj_real": asj_real_count_back, "asj_pred": asj_pred_count_back})
+    
+        axes[0].xaxis.set_label_text("asi base luminance")
+        axes[1].xaxis.set_label_text("asj base luminance")
+    
+        axes[0].yaxis.set_label_text("asi pred luminance")
+        axes[1].yaxis.set_label_text("asj pred luminance")
+
+        sns.scatterplot(data=df0, x="asi_real", y="asi_pred", ax=axes[0])
+        sns.scatterplot(data=df1, x="asj_real", y="asj_pred", ax=axes[1])
+        
+        plt.savefig(args.save + 'asi_vs_asj_back.png')
 
 
 def csv_stats(csv_path):
@@ -949,9 +914,9 @@ def csv_stats(csv_path):
     asi_fn = np.array(asi_fn)
     asj_fn = np.array(asj_fn)
 
-    print("ASI min, max, mean, median, std", min(asi_jacc),  max(asi_jacc),  np.mean(asi_jacc), np.median(asi_jacc), np.std(asi_jacc))
-    print("ASJ min, max, mean, median, std", min(asj_jacc),  max(asj_jacc),  np.mean(asj_jacc), np.median(asj_jacc), np.std(asj_jacc))
-    print("all min, max, mean, median, std", min(all_jacc),  max(all_jacc),  np.mean(all_jacc), np.median(all_jacc), np.std(all_jacc))
+    print("ASI Jaccard Scores min, max, mean, median, std", min(asi_jacc),  max(asi_jacc),  np.mean(asi_jacc), np.median(asi_jacc), np.std(asi_jacc))
+    print("ASJ Jaccard Scores min, max, mean, median, std", min(asj_jacc),  max(asj_jacc),  np.mean(asj_jacc), np.median(asj_jacc), np.std(asj_jacc))
+    print("all Jaccard Scores min, max, mean, median, std", min(all_jacc),  max(all_jacc),  np.mean(all_jacc), np.median(all_jacc), np.std(all_jacc))
 
     print("Num ASI with scores < 0.5", len( asi_jacc[asi_jacc < 0.5]))
     print("Num ASJ with scores < 0.5",len( asi_jacc[asj_jacc < 0.5]))
