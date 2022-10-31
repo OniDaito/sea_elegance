@@ -165,9 +165,12 @@ def find_background(og_image):
 
 def find_border(image):
     ''' Find the border of an image where the background is 0 and the actual area is 1.'''
-    shifted = np.roll(image, (1, 1, 1))
-    border = abs(image - shifted)
+    #print(image)
+    shifted = np.roll(image, (0, 1, 1, 1))
+    #print(shifted)
+    border = np.abs(image - shifted)
     border = np.where(border > 0, 1, 0)
+    border = np.reshape(border, image.shape)
     return border
     
 
@@ -344,6 +347,8 @@ def read_counts(args, sources_masks, og_sources, og_masks, rois):
             asi_pred_hf = hf.create_dataset("asi_pred", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
             asj_pred_hf = hf.create_dataset("asj_pred", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
             og_hf = hf.create_dataset("og", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
+            og_back_hf = hf.create_dataset("og_back", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
+
 
         with h5py.File(args.save, 'a') as hf:
             asi_actual_hf = hf['asi_actual']
@@ -351,6 +356,7 @@ def read_counts(args, sources_masks, og_sources, og_masks, rois):
             asi_pred_hf = hf['asi_pred']
             asj_pred_hf = hf['asj_pred']
             og_hf = hf['og']
+            og_back_hf = hf['og_back']
     
             for fidx, paths in enumerate(sources_masks):
                 print("Testing", paths)
@@ -365,11 +371,9 @@ def read_counts(args, sources_masks, og_sources, og_masks, rois):
                     target_path = target_path.replace(args.base, args.rep)
 
                 og_image = load_fits(og_path, dtype=torch.float32)
-                background_value = 0
 
-                if (args.back):
-                    background_value = find_background(og_image)
-                    print("Background value:", background_value)
+                background_value = find_background(og_image)
+                print("Background value:", background_value)
 
                 roi = rois[fidx]
             
@@ -410,7 +414,6 @@ def read_counts(args, sources_masks, og_sources, og_masks, rois):
 
                     print("Source Image", og_path)
 
-                    # Append the results of real masks to og images
                     og_image =  np.expand_dims(og_image, axis=0)
                     og_hf[-og_image.shape[0]:] = og_image
                     
@@ -426,9 +429,15 @@ def read_counts(args, sources_masks, og_sources, og_masks, rois):
                     asi_actual_mask = torch.where(target_image == 1, 1, 0)
                     asj_actual_mask = torch.where(target_image == 2, 1, 0)
 
-                    if (args.back):
-                        og_image = og_image - background_value
-                        og_image = np.clip(og_image, 0, 4096)
+                 
+                    og_image = og_image - background_value
+                    og_image = np.clip(og_image, 0, 4096)
+
+                    # Append the results of real masks to og backgroimages
+                    og_back_hf[-og_image.shape[0]:] = og_image
+                    
+                    if fidx + 1 < len(sources_masks):
+                        og_back_hf.resize(og_back_hf.shape[0] + og_image.shape[0], axis = 0)
 
                     print("Shape:", asi_actual_hf.shape)
 
@@ -512,29 +521,33 @@ def do_stats(args):
     idx = 0
 
     with h5py.File(args.load, 'r') as hf:
-        asi_actual_hf = hf['asi_actual']
-        asj_actual_hf = hf['asj_actual']
-        asi_pred_hf = hf['asi_pred']
-        asj_pred_hf = hf['asj_pred']
+        asi_actual = np.array(hf['asi_actual'])
+        asj_actual = np.array(hf['asj_actual'])
+        asi_pred = np.array(hf['asi_pred'])
+        asj_pred = np.array(hf['asj_pred'])
+        og = np.array(hf['og'])
 
         # Always ignore the first - it's an empty array cos HDF5!
-        asi_real = np.sum(np.array(asi_actual_hf), axis=(1,2,3))
-        asi_pred = np.sum(np.array(asi_pred_hf), axis=(1,2,3))
-        asj_real = np.sum(np.array(asj_actual_hf), axis=(1,2,3))
-        asj_pred = np.sum(np.array(asj_pred_hf), axis=(1,2,3))
+        asi_real_count = np.sum(asi_actual * og, axis=(1,2,3))
+        asi_pred_count = np.sum(asi_pred * og, axis=(1,2,3))
+        asj_real_count = np.sum(asj_actual * og, axis=(1,2,3))
+        asj_pred_count = np.sum(asj_pred * og, axis=(1,2,3))
 
-        print("Set size:", len(asi_real))
+        print("Set size:", len(asi_real_count))
 
         print("Correlations - spearmans & pearsons - ASI, ASJ")
-        asi_combo_cor = spearmanr(asi_real, asi_pred)
-        asj_combo_cor = spearmanr(asj_real, asj_pred)
+        asi_combo_cor = spearmanr(asi_real_count, asi_pred_count)
+        asj_combo_cor = spearmanr(asj_real_count, asj_pred_count)
         print(asi_combo_cor, asj_combo_cor)
-        asi_combo_cor = pearsonr(asi_real, asi_pred)
-        asj_combo_cor = pearsonr(asj_real, asj_pred)
+        asi_combo_cor = pearsonr(asi_real_count, asi_pred_count)
+        asj_combo_cor = pearsonr(asj_real_count, asj_pred_count)
         print(asi_combo_cor, asj_combo_cor)
 
 
-        border_image = find_border(asi_pred)
+        border_image_asi = find_border(asi_pred)
+        border_image_asj = find_border(asj_pred)
+        border_image = border_image_asi + border_image_asj
+        border_image = np.where(border_image_asi > 0, 1, 0)
         save_fits(border_image, "border_" + str(idx) + ".fits")
         idx += 1
 
@@ -746,9 +759,9 @@ def do_stats(args):
         sns.set_theme(style="whitegrid")
         fig, axes = plt.subplots(1, 2)
 
-        individuals = list(range(len(asi_real)))
-        df0 = pd.DataFrame({"individual": individuals, "asi_real": asi_real, "asi_pred": asi_pred})
-        df1 = pd.DataFrame({"individual": individuals, "asj_real": asj_real, "asj_pred": asj_pred})
+        individuals = list(range(len(asi_real_count)))
+        df0 = pd.DataFrame({"individual": individuals, "asi_real": asi_real_count, "asi_pred": asi_pred_count})
+        df1 = pd.DataFrame({"individual": individuals, "asj_real": asj_real_count, "asj_pred": asj_pred_count})
     
         axes[0].xaxis.set_label_text("asi base luminance")
         axes[1].xaxis.set_label_text("asj base luminance")
@@ -780,9 +793,6 @@ if __name__ == "__main__":
     parser.add_argument('--save', default="summary_stats.h5")
     parser.add_argument(
         "--no-cuda", action="store_true", default=False, help="disables CUDA training"
-    )
-    parser.add_argument(
-        "--back", action="store_true", default=False, help="Background subtraction",
     )
     
     parser.add_argument('--load', default="summary_stats.h5")
