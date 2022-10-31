@@ -165,11 +165,16 @@ def find_background(og_image):
 
 def find_border(image):
     ''' Find the border of an image where the background is 0 and the actual area is 1.'''
-    #print(image)
-    shifted = np.roll(image, (0, 1, 1, 1))
+    shifted_x = np.roll(image, -1, axis=2)
+    shifted_y = np.roll(image, -1, axis=1)
+    shifted_z = np.roll(image, -1, axis=0)
+ 
     #print(shifted)
-    border = np.abs(image - shifted)
-    border = np.where(border > 0, 1, 0)
+    border_x = np.abs(image - shifted_x)
+    border_y = np.abs(image - shifted_y)
+    border_z = np.abs(image - shifted_z)
+    border = border_x + border_y + border_z
+    border = np.clip(border, 0, 1)
     border = np.reshape(border, image.shape)
     return border
     
@@ -341,7 +346,7 @@ def read_counts(args, sources_masks, og_sources, og_masks, rois):
         model = model.to(device)
         model.eval()
 
-        with h5py.File(args.save, 'w') as hf:
+        with h5py.File(args.save + ".h5", 'w') as hf:
             asi_actual_hf = hf.create_dataset("asi_actual", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
             asj_actual_hf = hf.create_dataset("asj_actual", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
             asi_pred_hf = hf.create_dataset("asi_pred", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
@@ -351,7 +356,7 @@ def read_counts(args, sources_masks, og_sources, og_masks, rois):
             back_hf = hf.create_dataset("back", (1, 1), maxshape=(None, 1))
 
 
-        with h5py.File(args.save, 'a') as hf:
+        with h5py.File(args.save + ".h5", 'a') as hf:
             asi_actual_hf = hf['asi_actual']
             asj_actual_hf = hf['asj_actual']
             asi_pred_hf = hf['asi_pred']
@@ -437,7 +442,6 @@ def read_counts(args, sources_masks, og_sources, og_masks, rois):
                     asi_actual_mask = torch.where(target_image == 1, 1, 0)
                     asj_actual_mask = torch.where(target_image == 2, 1, 0)
 
-                 
                     og_image_back = og_image - background_value
                     og_image_back = np.clip(og_image_back, 0, 4096)
 
@@ -474,6 +478,13 @@ def read_counts(args, sources_masks, og_sources, og_masks, rois):
                 
                     if fidx + 1 < len(sources_masks):
                         asj_pred_hf.resize(asj_pred_hf.shape[0] + asj_pred_mask.shape[0], axis = 0)
+
+                    # Compute the Jaccard Scores
+
+                    scores = compare_masks(target_image.numpy(), resized_prediction.numpy())
+
+                    with open(args.save + "_scores.csv", "a") as w:
+                        w.write(str(fidx) + "," + source_path + "," + target_path + "," + scores + "\n")
 
                     # Now look at the false pos, false neg and get the scores
                     # Commented out for now as memory usage is too high
@@ -523,6 +534,59 @@ def read_counts(args, sources_masks, og_sources, og_masks, rois):
                     '''
 
 
+def compare_masks(original: np.ndarray, predicted: np.ndarray):
+    ''' Generate the Jaccard scores for the test set.'''
+    # L1 Sum absolute differences
+    l1 = np.subtract(original, predicted)
+    l1 = np.absolute(l1)
+    l1 = np.sum(l1)
+
+    # Mask overlay score
+    tsize = np.shape(original)
+    usize = tsize[0] * tsize[1] * tsize[2]
+    overlay = np.sum(np.where(original == predicted, 1, 0)) / usize
+    score = str(overlay) + ","
+
+    # Of the areas, how did we get it right?
+    m = np.where(original != 0, 1, 0)
+    n = np.where(predicted != 0, 1, 0)
+    overlap = np.sum(m * n) / np.sum(m)
+    score += str(overlap) + ","
+
+    # Dice score
+    dice = (2 * np.sum(m * n)) / (np.sum(m) + np.sum(n))
+    score += str(dice) + ","
+
+    # Jaccard
+    jacc = np.sum(n * m) / (np.sum(n) + np.sum(m) - np.sum(n * m))
+    score += str(jacc) + ","
+
+    # Per class Dice and Jaccard
+    fm = np.where(original == 0, 1, 0)
+    fn = np.where(predicted == 0, 1, 0)
+
+    for c in range(1, 3):
+        m = np.where(original == c, 1, 0)
+        n = np.where(predicted == c, 1, 0)
+      
+        dice = (2 * np.sum(m * n)) / (np.sum(m) + np.sum(n))
+        jacc = np.sum(n * m) / (np.sum(n) + np.sum(m) - np.sum(n * m))
+        score += str(dice) + ","
+        score += str(jacc) + ","
+        true_pos = np.sum(m * n)
+        true_neg = np.sum(fm * fn)
+        false_pos = np.sum(n * fm)
+        false_neg = np.sum(fn * m)
+        score += str(true_pos) + ","
+        score += str(true_neg) + ","
+        score += str(false_pos) + ","
+        score += str(false_neg) + ","
+
+    score = score[:-1]
+    return score
+
+
+
 def do_stats(args):
     ''' Now we have the data, lets do the stats on it.'''
     from scipy.stats import spearmanr, pearsonr
@@ -567,25 +631,53 @@ def do_stats(args):
         asj_combo_cor = pearsonr(asj_real_count, asj_pred_count)
         print(asi_combo_cor, asj_combo_cor)
 
-        border_asi_values = []
-        border_asj_values = []
+        border_asi_values_actual = []
+        border_asj_values_actual = []
 
+        border_asi_values_pred = []
+        border_asj_values_pred = []
+
+
+        with open("eval_log.csv", "w") as w:
+            w.write("idx,src,mask,Overlay,Overlap,Dice,Jaccard,Dice1,Jacc1,tp1,tn1,fp1,fn1,Dice2,Jacc2,tp2,tn2,fp2,fn2\n")
+
+     
         # Find the border
         for idx in range(len(asi_real_count)):
             asi_pred_single = asi_pred[idx]
             asj_pred_single = asj_pred[idx]
-            border_image_asi = find_border(asi_pred_single)
-            border_image_asj = find_border(asj_pred_single)
-            border_image_asi = np.where(border_image_asi > 0, 1, 0)
-            border_image_asj = np.where(border_image_asj > 0, 1, 0)
+
+            asi_actual_single = asi_actual[idx]
+            asj_actual_single = asj_actual[idx]
+
+            border_image_asi_pred = find_border(asi_pred_single)
+            border_image_asj_pred = find_border(asj_pred_single)
+
+            border_image_asi_actual = find_border(asi_actual_single)
+            border_image_asj_actual = find_border(asj_actual_single)
+            #border_image_asi = np.where(border_image_asi > 0, 1, 0)
+            #border_image_asj = np.where(border_image_asj > 0, 1, 0)
            
-            border_asi_values.append(np.mean(border_image_asi * og[idx]))
-            border_asj_values.append(np.mean(border_image_asj * og[idx]))
+            border_asi_values_pred.append(np.sum(border_image_asi_pred * og[idx]) / np.sum(border_image_asi_pred))
+            border_asj_values_pred.append(np.sum(border_image_asj_pred * og[idx]) / np.sum(border_image_asj_pred))
 
-            save_fits(border_asi_values, "border_asi_" + str(idx) + ".fits")
-            save_fits(border_asj_values, "border_asj_" + str(idx) + ".fits")
+            border_asi_values_actual.append(np.sum(border_image_asi_actual * og[idx]) / np.sum(border_image_asi_actual))
+            border_asj_values_actual.append(np.sum(border_image_asj_actual * og[idx]) / np.sum(border_image_asj_actual))
 
-        print(border_asi_values)
+            # Can save out the images if we so desire, to check it's all working
+            #save_fits(border_image_asi, "border_asi_" + str(idx) + ".fits")
+            #save_fits(border_image_asj, "border_asj_" + str(idx) + ".fits")
+            #save_fits(asi_pred_single, "asi_pred_" + str(idx) + ".fits")
+            #save_fits(asi_actual_single, "asi_actual_" + str(idx) + ".fits")
+            #save_fits(asj_pred_single, "asj_" + str(idx) + ".fits")
+
+            
+
+        print("ASI Actual Border mean median std", np.mean(border_asi_values_actual), np.median(border_asi_values_actual), np.std(border_asi_values_actual))
+        print("ASJ Actual Border mean median std", np.mean(border_asj_values_actual), np.median(border_asj_values_actual), np.std(border_asj_values_actual))
+        print("ASI Pred Border mean median std", np.mean(border_asi_values_pred), np.median(border_asi_values_pred), np.std(border_asi_values_pred))
+        print("ASJ Pred Border mean median std", np.mean(border_asj_values_pred), np.median(border_asi_values_pred), np.std(border_asi_values_pred))
+
 
         '''
 
@@ -785,7 +877,7 @@ def do_stats(args):
 
         '''
 
-        
+        '''
         # Multiclass alignments
         sns.set_theme(style="whitegrid")
         fig, axes = plt.subplots(2, 2)
@@ -814,7 +906,55 @@ def do_stats(args):
         sns.scatterplot(data=df1, x="asj_real", y="asj_pred", ax=axes[1])
         
         plt.show()
+        '''
+
+
+def csv_stats(csv_path):
+    """ If we have already computed the stats, lets present some averages 
+    and visualise. """
+    import csv
+
+    scores  = []
+
+    with open(csv_path) as csvfile:
+        reader = csv.DictReader(csvfile, delimiter=',')
+        for line in reader:
+            scores.append(line)
+
+    asi_jacc = []
+    asj_jacc = []
+    all_jacc = []
+
+    asi_fp = []
+    asj_fp = []
+    asi_fn = []
+    asj_fn = []
+
+    for score in scores:
+        asi_jacc.append(float(score['Jacc1']))
+        asj_jacc.append(float(score['Jacc2']))
+        all_jacc.append(float(score['Jaccard']))
         
+        asi_fp.append(float(score['fp1']))
+        asj_fp.append(float(score['fp2']))
+        asi_fn.append(float(score['fn1']))
+        asj_fn.append(float(score['fn2']))
+
+    asi_jacc = np.array(asi_jacc)
+    asj_jacc = np.array(asj_jacc)
+    all_jacc = np.array(all_jacc)
+
+    asi_fp = np.array(asi_fp)
+    asj_fp = np.array(asj_fp)
+    asi_fn = np.array(asi_fn)
+    asj_fn = np.array(asj_fn)
+
+    print("ASI min, max, mean, median, std", min(asi_jacc),  max(asi_jacc),  np.mean(asi_jacc), np.median(asi_jacc), np.std(asi_jacc))
+    print("ASJ min, max, mean, median, std", min(asj_jacc),  max(asj_jacc),  np.mean(asj_jacc), np.median(asj_jacc), np.std(asj_jacc))
+    print("all min, max, mean, median, std", min(all_jacc),  max(all_jacc),  np.mean(all_jacc), np.median(all_jacc), np.std(all_jacc))
+
+    print("Num ASI with scores < 0.5", len( asi_jacc[asi_jacc < 0.5]))
+    print("Num ASJ with scores < 0.5",len( asi_jacc[asj_jacc < 0.5]))
 
 
 if __name__ == "__main__":
@@ -825,17 +965,18 @@ if __name__ == "__main__":
     parser.add_argument('--savedir', default=".")
     parser.add_argument('--base', default="")
     parser.add_argument('--rep', default="")
-    parser.add_argument('--save', default="summary_stats.h5")
-    parser.add_argument(
-        "--no-cuda", action="store_true", default=False, help="disables CUDA training"
-    )
-    
-    parser.add_argument('--load', default="summary_stats.h5")
+    parser.add_argument('--save', default="summary_stats", help="Name WITHOUT extension for the saved output files.")
+    parser.add_argument("--no-cuda", action="store_true", default=False, help="disables CUDA training")
+    parser.add_argument('--load', default="summary_stats", help="Filename WITHOUT extension for the .h5 and csv to process.")
+
     args = parser.parse_args()
     data = None
 
-    if not os.path.exists(args.load):
+    if args.dataset != "":
         sources_masks, og_sources, og_masks, rois  = find_image_pairs(args)
         read_counts(args, sources_masks, og_sources, og_masks, rois)
 
-    do_stats(args)
+    elif os.path.exists(args.load + ".h5"):
+        do_stats(args)
+        csv_stats(args.load + ".csv")
+        
