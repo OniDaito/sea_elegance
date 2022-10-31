@@ -105,6 +105,7 @@ data_files = [
 ]
 
 def find_background(og_image):
+    '''
     kernel_dia = 3
     kernel_rad = 1
     modes = []
@@ -149,11 +150,25 @@ def find_background(og_image):
 
                 avg /= 27.0
                 modes.append(int(avg))
-            
+    '''
+
+    from scipy import signal
+
+    kernel = np.array([1.0 / 27.0 for i in range(27)]).reshape((3,3,3))
+    filtered = signal.convolve(og_image, kernel, mode='same')
+    modes = filtered.astype(int)
         
     vals, counts = np.unique(modes, return_counts=True)
     mode_value = np.argwhere(counts == np.max(counts))
-    return mode_value
+    return vals[mode_value[0][0]]
+
+
+def find_border(image):
+    ''' Find the border of an image where the background is 0 and the actual area is 1.'''
+    shifted = np.roll(image, (1, 1, 1))
+    border = abs(image - shifted)
+    border = np.where(border > 0, 1, 0)
+    return border
     
 
 def find_image_pairs(args):
@@ -328,21 +343,15 @@ def read_counts(args, sources_masks, og_sources, og_masks, rois):
             asj_actual_hf = hf.create_dataset("asj_actual", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
             asi_pred_hf = hf.create_dataset("asi_pred", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
             asj_pred_hf = hf.create_dataset("asj_pred", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
-            asi_false_pos_hf = hf.create_dataset("asi_false_pos", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
-            asi_false_neg_hf = hf.create_dataset("asi_false_neg", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
-            asj_false_pos_hf = hf.create_dataset("asj_false_pos", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
-            asj_false_neg_hf = hf.create_dataset("asj_false_neg", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
+            og_hf = hf.create_dataset("og", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
 
         with h5py.File(args.save, 'a') as hf:
             asi_actual_hf = hf['asi_actual']
             asj_actual_hf = hf['asj_actual']
             asi_pred_hf = hf['asi_pred']
             asj_pred_hf = hf['asj_pred']
-            asi_false_pos_hf = hf['asi_false_pos']
-            asi_false_neg_hf = hf['asi_false_neg']
-            asj_false_pos_hf = hf['asj_false_pos']
-            asj_false_neg_hf = hf['asj_false_neg']
-          
+            og_hf = hf['og']
+    
             for fidx, paths in enumerate(sources_masks):
                 print("Testing", paths)
 
@@ -401,6 +410,13 @@ def read_counts(args, sources_masks, og_sources, og_masks, rois):
 
                     print("Source Image", og_path)
 
+                    # Append the results of real masks to og images
+                    og_image =  np.expand_dims(og_image, axis=0)
+                    og_hf[-og_image.shape[0]:] = og_image
+                    
+                    if fidx + 1 < len(sources_masks):
+                        og_hf.resize(og_hf.shape[0] + og_image.shape[0], axis = 0)
+
                     #input_image = torch.narrow(input_image, 0, 0, resized_prediction.shape[0])
                     print("Shapes", classes.shape, input_image.shape)
 
@@ -412,44 +428,40 @@ def read_counts(args, sources_masks, og_sources, og_masks, rois):
 
                     if (args.back):
                         og_image = og_image - background_value
-
-                    count_asi_pred = asi_pred_mask * og_image
-                    count_asj_pred = asj_pred_mask * og_image
-
-                    count_asi_real = asi_actual_mask * og_image
-                    count_asj_real = asj_actual_mask * og_image
+                        og_image = np.clip(og_image, 0, 4096)
 
                     print("Shape:", asi_actual_hf.shape)
 
                     # Append the results of real masks to og images
-                    count_asi_real =  np.expand_dims(count_asi_real, axis=0)
-                    asi_actual_hf[-count_asi_real.shape[0]:] = count_asi_real
+                    asi_actual_mask =  np.expand_dims(asi_actual_mask, axis=0)
+                    asi_actual_hf[-asi_actual_mask.shape[0]:] = asi_actual_mask
                     
                     if fidx + 1 < len(sources_masks):
-                        asi_actual_hf.resize(asi_actual_hf.shape[0] + count_asi_real.shape[0], axis = 0)
+                        asi_actual_hf.resize(asi_actual_hf.shape[0] + asi_actual_mask.shape[0], axis = 0)
 
-                    count_asj_real =  np.expand_dims(count_asj_real, axis=0)
-                    asj_actual_hf[-count_asj_real.shape[0]:] = count_asj_real
+                    asj_actual_mask =  np.expand_dims(asj_actual_mask, axis=0)
+                    asj_actual_hf[-asj_actual_mask.shape[0]:] = asj_actual_mask
                     
                     if fidx + 1 < len(sources_masks):
-                        asj_actual_hf.resize(asj_actual_hf.shape[0] + count_asj_real.shape[0], axis = 0)
+                        asj_actual_mask.resize(asj_actual_mask.shape[0] + asj_actual_mask.shape[0], axis = 0)
 
                     # Now append the predictions
-                    count_asi_pred =  np.expand_dims(count_asi_pred, axis=0)
-                    asi_pred_hf[-count_asi_pred.shape[0]:] = count_asi_pred
+                    asi_pred_mask =  np.expand_dims(asi_pred_mask, axis=0)
+                    asi_pred_hf[-asi_pred_mask.shape[0]:] = asi_pred_mask
                     
                     if fidx + 1 < len(sources_masks):
-                        asi_pred_hf.resize(asi_pred_hf.shape[0] + count_asi_pred.shape[0], axis = 0)
+                        asi_pred_hf.resize(asi_pred_hf.shape[0] + asi_pred_mask.shape[0], axis = 0)
 
-                    count_asj_pred =  np.expand_dims(count_asj_pred, axis=0)
-                    asj_pred_hf[-count_asj_pred.shape[0]:] = count_asj_pred
+                    asj_pred_mask =  np.expand_dims(asj_pred_mask, axis=0)
+                    asj_pred_hf[-asj_pred_mask.shape[0]:] = asj_pred_mask
                 
                     if fidx + 1 < len(sources_masks):
-                        asj_pred_hf.resize(asj_pred_hf.shape[0] + count_asj_pred.shape[0], axis = 0)
+                        asj_pred_hf.resize(asj_pred_hf.shape[0] + asj_pred_mask.shape[0], axis = 0)
 
                     # Now look at the false pos, false neg and get the scores
                     # Commented out for now as memory usage is too high
                     
+                    '''
                     asi_pred_inv = torch.where(resized_prediction == 1, 0, 1)
                     asj_pred_inv = torch.where(resized_prediction == 2, 0, 1)
 
@@ -491,22 +503,19 @@ def read_counts(args, sources_masks, og_sources, og_masks, rois):
                     
                     if fidx + 1 < len(sources_masks):
                         asj_false_neg_hf.resize(asj_false_neg_hf.shape[0] + count_asj_false_neg.shape[0], axis = 0)
+                    '''
 
-           
 
 def do_stats(args):
     ''' Now we have the data, lets do the stats on it.'''
     from scipy.stats import spearmanr, pearsonr
+    idx = 0
 
     with h5py.File(args.load, 'r') as hf:
         asi_actual_hf = hf['asi_actual']
         asj_actual_hf = hf['asj_actual']
         asi_pred_hf = hf['asi_pred']
         asj_pred_hf = hf['asj_pred']
-        asi_false_pos_hf = hf['asi_false_pos']
-        asi_false_neg_hf = hf['asi_false_neg']
-        asj_false_pos_hf = hf['asj_false_pos']
-        asj_false_neg_hf = hf['asj_false_neg']
 
         # Always ignore the first - it's an empty array cos HDF5!
         asi_real = np.sum(np.array(asi_actual_hf), axis=(1,2,3))
@@ -523,6 +532,50 @@ def do_stats(args):
         asi_combo_cor = pearsonr(asi_real, asi_pred)
         asj_combo_cor = pearsonr(asj_real, asj_pred)
         print(asi_combo_cor, asj_combo_cor)
+
+
+        border_image = find_border(asi_pred)
+        save_fits(border_image, "border_" + str(idx) + ".fits")
+        idx += 1
+
+
+        '''
+
+        asi_false_pos_count = np.sum(np.array(asi_false_pos_hf), axis=(1,2,3))
+        
+        print("ASI False Pos Mean / Median / Std :", np.mean(asi_false_pos_count), np.median(asi_false_pos_count), np.std(asi_false_pos_count))
+        print("ASI False Pos Median as % of original :",  np.median(asi_false_pos_count) / np.median(asi_real) * 100.0)
+
+        asj_false_pos_count = np.sum(np.array(asj_false_pos_hf), axis=(1,2,3))
+
+        print("ASJ False Pos Mean / Median / Std :", np.mean(asj_false_pos_count), np.median(asj_false_pos_count), np.std(asj_false_pos_count))
+        print("ASJ False Pos Median as % of original :",  np.median(asj_false_pos_count) / np.median(asj_real) * 100.0)
+
+        sig_value = 291
+
+        above_actual = np.sum(np.where(np.array(asi_actual_hf) >= sig_value, 1, 0))
+        asi_actual_mask = np.where(np.array(asi_actual_hf) != 0, 1, 0)
+        below_actual = np.sum( np.where(np.array(asi_actual_hf) < sig_value, 1, 0) * asi_actual_mask)
+
+        above_pred = np.sum(np.where(np.array(asi_pred_hf) >= sig_value, 1, 0))
+        asi_pred_mask = np.where(np.array(asi_pred_hf) != 0, 1, 0)
+        below_pred = np.sum(np.where(np.array(asi_pred_hf) < sig_value, 1, 0) * asi_pred_mask)
+        print("ASI percentage below sig for base and pred", below_actual / (above_actual + below_actual) * 100.0,  below_pred / (above_pred + below_pred) * 100.0)
+
+        print("ASI Pred vs Actual Size ", np.sum(asi_pred_mask) / np.sum(asi_actual_mask))
+
+        above_actual = np.sum(np.where(np.array(asj_actual_hf) >= sig_value, 1, 0))
+        asj_actual_mask = np.where(np.array(asj_actual_hf) != 0, 1, 0)
+        below_actual = np.sum(np.where(np.array(asj_actual_hf) < sig_value, 1, 0) * asj_actual_mask)
+
+        above_pred = np.sum(np.where(np.array(asj_pred_hf) >= sig_value, 1, 0))
+        asj_pred_mask = np.where(np.array(asj_pred_hf) != 0, 1, 0)
+        below_pred = np.sum(np.where(np.array(asj_pred_hf) < sig_value, 1, 0) * asj_pred_mask)
+        print("ASJ percentage below sig for base and pred",  below_actual / (above_actual + below_actual) * 100.0,  below_pred / (above_pred + below_pred) * 100.0)
+
+        print("ASJ Pred vs Actual Size ", np.sum(asj_pred_mask) / np.sum(asj_actual_mask))
+        '''
+
 
         '''
 
@@ -556,12 +609,6 @@ def do_stats(args):
         ax.legend()
         plt.show()
 
-        above_actual = np.sum(np.where(asi_actual >= sig_value, 1, 0))
-        below_actual = np.sum(np.where(asi_actual < sig_value, 1, 0))
-        above_pred = np.sum(np.where(asi_pred >= sig_value, 1, 0))
-        below_pred = np.sum(np.where(asi_pred < sig_value, 1, 0))
-        print("ASI Counts above and below sig for base and pred", above_actual, below_actual, above_pred, below_pred )
-
         # Now go with ASJ
         asj_actual = np.array(data["asj_1_actual"][0]).flatten()
 
@@ -589,11 +636,7 @@ def do_stats(args):
         ax.legend()
         plt.show()
 
-        above_actual = np.sum(np.where(asj_actual >= sig_value, 1, 0))
-        below_actual = np.sum(np.where(asj_actual < sig_value, 1, 0))
-        above_pred = np.sum(np.where(asj_pred >= sig_value, 1, 0))
-        below_pred = np.sum(np.where(asj_pred < sig_value, 1, 0))
-        print("ASJ Counts above and below sig for base and pred", above_actual, below_actual, above_pred, below_pred )
+
         '''
 
         '''
@@ -746,9 +789,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
     data = None
 
-    sources_masks, og_sources, og_masks, rois  = find_image_pairs(args)
-
     if not os.path.exists(args.load):
+        sources_masks, og_sources, og_masks, rois  = find_image_pairs(args)
         read_counts(args, sources_masks, og_sources, og_masks, rois)
 
     do_stats(args)
