@@ -348,7 +348,7 @@ def read_counts(args, sources_masks, og_sources, og_masks, rois):
             asj_pred_hf = hf.create_dataset("asj_pred", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
             og_hf = hf.create_dataset("og", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
             og_back_hf = hf.create_dataset("og_back", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
-            back_hf = hf.create_dataset("back", (1), maxshape=(None))
+            back_hf = hf.create_dataset("back", (1, 1), maxshape=(None, 1))
 
 
         with h5py.File(args.save, 'a') as hf:
