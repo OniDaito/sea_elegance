@@ -348,6 +348,7 @@ def read_counts(args, sources_masks, og_sources, og_masks, rois):
             asj_pred_hf = hf.create_dataset("asj_pred", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
             og_hf = hf.create_dataset("og", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
             og_back_hf = hf.create_dataset("og_back", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
+            back_hf = hf.create_dataset("back", (1), maxshape=(None))
 
 
         with h5py.File(args.save, 'a') as hf:
@@ -357,6 +358,8 @@ def read_counts(args, sources_masks, og_sources, og_masks, rois):
             asj_pred_hf = hf['asj_pred']
             og_hf = hf['og']
             og_back_hf = hf['og_back']
+            back_hf = hf["back"]
+
     
             for fidx, paths in enumerate(sources_masks):
                 print("Testing", paths)
@@ -419,6 +422,11 @@ def read_counts(args, sources_masks, og_sources, og_masks, rois):
                     
                     if fidx + 1 < len(sources_masks):
                         og_hf.resize(og_hf.shape[0] + og_image.shape[0], axis = 0)
+
+                    back_hf[-1:] = np.array([background_value])
+                    
+                    if fidx + 1 < len(sources_masks):
+                        back_hf.resize(back_hf.shape[0] + 1, axis = 0)
 
                     #input_image = torch.narrow(input_image, 0, 0, resized_prediction.shape[0])
                     print("Shapes", classes.shape, input_image.shape)
