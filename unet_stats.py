@@ -438,14 +438,14 @@ def read_counts(args, sources_masks, og_sources, og_masks, rois):
                     asj_actual_mask = torch.where(target_image == 2, 1, 0)
 
                  
-                    og_image = og_image - background_value
-                    og_image = np.clip(og_image, 0, 4096)
+                    og_image_back = og_image - background_value
+                    og_image_back = np.clip(og_image_back, 0, 4096)
 
                     # Append the results of real masks to og backgroimages
-                    og_back_hf[-og_image.shape[0]:] = og_image
+                    og_back_hf[-og_image.shape[0]:] = og_image_back
                     
                     if fidx + 1 < len(sources_masks):
-                        og_back_hf.resize(og_back_hf.shape[0] + og_image.shape[0], axis = 0)
+                        og_back_hf.resize(og_back_hf.shape[0] + og_image_back.shape[0], axis = 0)
 
                     print("Shape:", asi_actual_hf.shape)
 
@@ -534,6 +534,8 @@ def do_stats(args):
         asi_pred = np.array(hf['asi_pred'])
         asj_pred = np.array(hf['asj_pred'])
         og = np.array(hf['og'])
+        og_back = np.array(hf['og_back'])
+        back = np.array(hf['back'])
 
         # Always ignore the first - it's an empty array cos HDF5!
         asi_real_count = np.sum(asi_actual * og, axis=(1,2,3))
@@ -543,7 +545,7 @@ def do_stats(args):
 
         print("Set size:", len(asi_real_count))
 
-        print("Correlations - spearmans & pearsons - ASI, ASJ")
+        print("Correlations - spearmans & pearsons - ASI, ASJ - no background removal")
         asi_combo_cor = spearmanr(asi_real_count, asi_pred_count)
         asj_combo_cor = spearmanr(asj_real_count, asj_pred_count)
         print(asi_combo_cor, asj_combo_cor)
@@ -551,14 +553,39 @@ def do_stats(args):
         asj_combo_cor = pearsonr(asj_real_count, asj_pred_count)
         print(asi_combo_cor, asj_combo_cor)
 
+        # Always ignore the first - it's an empty array cos HDF5!
+        asi_real_count = np.sum(asi_actual * og_back, axis=(1,2,3))
+        asi_pred_count = np.sum(asi_pred * og_back, axis=(1,2,3))
+        asj_real_count = np.sum(asj_actual * og_back, axis=(1,2,3))
+        asj_pred_count = np.sum(asj_pred * og_back, axis=(1,2,3))
 
-        border_image_asi = find_border(asi_pred)
-        border_image_asj = find_border(asj_pred)
-        border_image = border_image_asi + border_image_asj
-        border_image = np.where(border_image_asi > 0, 1, 0)
-        save_fits(border_image, "border_" + str(idx) + ".fits")
-        idx += 1
+        print("Correlations - spearmans & pearsons - ASI, ASJ - background removed")
+        asi_combo_cor = spearmanr(asi_real_count, asi_pred_count)
+        asj_combo_cor = spearmanr(asj_real_count, asj_pred_count)
+        print(asi_combo_cor, asj_combo_cor)
+        asi_combo_cor = pearsonr(asi_real_count, asi_pred_count)
+        asj_combo_cor = pearsonr(asj_real_count, asj_pred_count)
+        print(asi_combo_cor, asj_combo_cor)
 
+        border_asi_values = []
+        border_asj_values = []
+
+        # Find the border
+        for idx in range(len(asi_real_count)):
+            asi_pred_single = asi_pred[idx]
+            asj_pred_single = asj_pred[idx]
+            border_image_asi = find_border(asi_pred_single)
+            border_image_asj = find_border(asj_pred_single)
+            border_image_asi = np.where(border_image_asi > 0, 1, 0)
+            border_image_asj = np.where(border_image_asj > 0, 1, 0)
+           
+            border_asi_values.append(np.mean(border_image_asi * og[idx]))
+            border_asj_values.append(np.mean(border_image_asj * og[idx]))
+
+            save_fits(border_asi_values, "border_asi_" + str(idx) + ".fits")
+            save_fits(border_asj_values, "border_asj_" + str(idx) + ".fits")
+
+        print(border_asi_values)
 
         '''
 
