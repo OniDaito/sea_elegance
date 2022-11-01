@@ -566,16 +566,16 @@ def do_stats(args):
         asj_real_count = []
         asj_pred_count = []
 
-        for i in tqdm(range(0, asi_actual_hf.size, asi_actual_hf.chunks[0])):
+        for i in tqdm(range(0, asi_actual_hf.size[0], asi_actual_hf.chunks[0])):
             asi_real_count.append(np.sum(asi_actual_hf[i: i + asi_actual_hf.chunks[0]] * og_hf[i: i + asi_actual_hf.chunks[0]], axis=(1,2,3)))
 
-        for i in tqdm(range(0, asj_actual_hf.size, asj_actual_hf.chunks[0])):
+        for i in tqdm(range(0, asj_actual_hf.size[0], asj_actual_hf.chunks[0])):
             asi_pred_count.append(np.sum(asj_actual_hf[i: i + asj_actual_hf.chunks[0]] * og_hf[i: i + asj_actual_hf.chunks[0]], axis=(1,2,3)))
 
-        for i in tqdm(range(0, asi_pred_hf.size, asi_pred_hf.chunks[0])):
+        for i in tqdm(range(0, asi_pred_hf.size[0], asi_pred_hf.chunks[0])):
             asj_real_count.append(np.sum(asi_pred_hf[i: i + asi_pred_hf.chunks[0]] * og_hf[i: i + asi_pred_hf.chunks[0]], axis=(1,2,3)))
         
-        for i in tqdm(range(0, asj_pred_hf.size, asj_pred_hf.chunks[0])):
+        for i in tqdm(range(0, asj_pred_hf.size[0], asj_pred_hf.chunks[0])):
             asj_pred_count.append(np.sum(asj_pred_hf[i: i + asj_pred_hf.chunks[0]] * og_hf[i: i + asj_pred_hf.chunks[0]], axis=(1,2,3)))
 
         asi_real_count = np.array(asi_real_count)
