@@ -548,22 +548,40 @@ def compare_masks(original: np.ndarray, predicted: np.ndarray):
 def do_stats(args):
     ''' Perform the statistics on the HDF5 data.'''
     from scipy.stats import spearmanr, pearsonr
+    from tqdm import tqdm
+
     idx = 0
 
     with h5py.File(args.load + ".h5", 'r') as hf:
-        asi_actual = np.array(hf['asi_actual'])
-        asj_actual = np.array(hf['asj_actual'])
-        asi_pred = np.array(hf['asi_pred'])
-        asj_pred = np.array(hf['asj_pred'])
-        og = np.array(hf['og'])
+        asi_actual_hf = hf['asi_actual']
+        asj_actual_hf = hf['asj_actual']
+        asi_pred_hf = hf['asi_pred']
+        asj_pred_hf = hf['asj_pred']
+        og_hf = hf['og']
         og_back = np.array(hf['og_back'])
         back = np.array(hf['back'])
 
-        # Always ignore the first - it's an empty array cos HDF5!
-        asi_real_count = np.sum(asi_actual * og, axis=(1,2,3))
-        asi_pred_count = np.sum(asi_pred * og, axis=(1,2,3))
-        asj_real_count = np.sum(asj_actual * og, axis=(1,2,3))
-        asj_pred_count = np.sum(asj_pred * og, axis=(1,2,3))
+        asi_real_count = []
+        asi_pred_count = []
+        asj_real_count = []
+        asj_pred_count = []
+
+        for i in tqdm(range(0, asi_actual_hf.size, asi_actual_hf.chunks[0])):
+            asi_real_count.append(np.sum(asi_actual_hf[i: i + asi_actual_hf.chunks[0]] * og_hf[i: i + asi_actual_hf.chunks[0]], axis=(1,2,3)))
+
+        for i in tqdm(range(0, asj_actual_hf.size, asj_actual_hf.chunks[0])):
+            asi_pred_count.append(np.sum(asj_actual_hf[i: i + asj_actual_hf.chunks[0]] * og_hf[i: i + asj_actual_hf.chunks[0]], axis=(1,2,3)))
+
+        for i in tqdm(range(0, asi_pred_hf.size, asi_pred_hf.chunks[0])):
+            asj_real_count.append(np.sum(asi_pred_hf[i: i + asi_pred_hf.chunks[0]] * og_hf[i: i + asi_pred_hf.chunks[0]], axis=(1,2,3)))
+        
+        for i in tqdm(range(0, asj_pred_hf.size, asj_pred_hf.chunks[0])):
+            asj_pred_count.append(np.sum(asj_pred_hf[i: i + asj_pred_hf.chunks[0]] * og_hf[i: i + asj_pred_hf.chunks[0]], axis=(1,2,3)))
+
+        asi_real_count = np.array(asi_real_count)
+        asi_pred_count = np.array(asi_pred_count)
+        asj_real_count = np.array(asj_real_count)
+        asj_pred_count = np.array(asj_pred_count)
 
         print("Set size:", len(asi_real_count))
 
@@ -575,7 +593,7 @@ def do_stats(args):
         asj_combo_cor = pearsonr(asj_real_count, asj_pred_count)
         print(asi_combo_cor, asj_combo_cor)
 
-        # Always ignore the first - it's an empty array cos HDF5!
+        '''
         asi_real_count_back = np.sum(asi_actual * og_back, axis=(1,2,3))
         asi_pred_count_back = np.sum(asi_pred * og_back, axis=(1,2,3))
         asj_real_count_back = np.sum(asj_actual * og_back, axis=(1,2,3))
@@ -679,6 +697,8 @@ def do_stats(args):
 
         '''
 
+        '''
+
         # We need to see the values in our predicted masks versus the original masks to see which dist is better
         sig_value = 291
         asi_actual = np.array(data["asi_1_actual"][0]).flatten()
@@ -735,7 +755,6 @@ def do_stats(args):
         ax.set_title("Histogram of intensity values in the original and predicted masks for ASJ.")
         ax.legend()
         plt.show()
-
 
         '''
 
@@ -834,6 +853,7 @@ def do_stats(args):
         kldiv = sum(scipy.special.kl_div(asi_pred_prob, asj_pred_prob))
         jensen = scipy.spatial.distance.jensenshannon(asi_pred_prob, asj_pred_prob)
         print("ASI to ASJ Pred  KL-Div, Jensen", kldiv, jensen)
+        '''
 
         '''
         # Plot the Predicted against the Original
@@ -876,6 +896,7 @@ def do_stats(args):
         sns.scatterplot(data=df1, x="asj_real", y="asj_pred", ax=axes[1])
         
         plt.savefig(args.save + 'asi_vs_asj_back.png')
+        '''
 
 
 def csv_stats(csv_path):
