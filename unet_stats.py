@@ -8,6 +8,10 @@ Author : Benjamin Blundell - k1803390@kcl.ac.uk
 
 stats.py - look at the worm data and generate some stats
 
+This script creates two files, an HDF5 and a CSV. The HDF5
+file can be quite large - in the order of tens of gigabytes
+depending on the size of the test set used with the U-Net.
+
 Example use:
 python unet_stats.py --base /phd/wormz/queelim --rep /media/proto_backup/wormz/queelim --dataset /media/proto_backup/wormz/queelim/dataset_3d_basic_noresize --savedir /media/proto_working/runs/wormz_2022_09_19 --no-cuda
 python unet_stats.py --load summary_stats.h5
@@ -347,12 +351,12 @@ def read_counts(args, sources_masks, og_sources, og_masks, rois):
         model.eval()
 
         with h5py.File(args.save + ".h5", 'w') as hf:
-            asi_actual_hf = hf.create_dataset("asi_actual", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
-            asj_actual_hf = hf.create_dataset("asj_actual", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
-            asi_pred_hf = hf.create_dataset("asi_pred", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
-            asj_pred_hf = hf.create_dataset("asj_pred", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
-            og_hf = hf.create_dataset("og", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
-            og_back_hf = hf.create_dataset("og_back", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width))
+            asi_actual_hf = hf.create_dataset("asi_actual", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width), chunks=(2, image_depth, image_height, image_width))
+            asj_actual_hf = hf.create_dataset("asj_actual", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width), chunks=(2, image_depth, image_height, image_width))
+            asi_pred_hf = hf.create_dataset("asi_pred", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width), chunks=(2, image_depth, image_height, image_width))
+            asj_pred_hf = hf.create_dataset("asj_pred", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width), chunks=(2, image_depth, image_height, image_width))
+            og_hf = hf.create_dataset("og", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width), chunks=(2, image_depth, image_height, image_width))
+            og_back_hf = hf.create_dataset("og_back", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width), chunks=(2, image_depth, image_height, image_width))
             back_hf = hf.create_dataset("back", (1, 1), maxshape=(None, 1))
 
         with open(args.save + ".csv", "w") as w:
