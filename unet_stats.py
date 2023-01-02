@@ -34,7 +34,7 @@ from matplotlib import pyplot as plt
 from util.loadsave import load_model, load_checkpoint
 from util.image import load_fits, save_fits
 import torch.nn.functional as F
-
+from tqdm import tqdm
 
 data_files = [ 
 ["/phd/wormz/queelim/ins-6-mCherry/20170724-QL285_S1-d1.0", "/phd/wormz/queelim/ins-6-mCherry/Annotation/20170724-QL285_S1-d1.0"],
@@ -107,6 +107,14 @@ data_files = [
 ["/phd/wormz/queelim/ins-6-mCherry_2/20180308-QL569-d0.0", "/phd/wormz/queelim/ins-6-mCherry_2/Annotations/Reesha_analysis/20180308-QL569-d0.0"],
 ["/phd/wormz/queelim/ins-6-mCherry_2/20180308-QL849-d0.0", "/phd/wormz/queelim/ins-6-mCherry_2/Annotations/Reesha_analysis/20180308-QL849-d0.0"]
 ]
+
+# TODO - remove from globals and have on command line (or a check first off)
+# For now, set these manually
+image_depth = 51
+image_height = 200
+image_width = 200
+nclasses = 3
+chunk_size = 2
 
 def find_background(og_image):
     '''
@@ -331,11 +339,6 @@ def read_counts(args, sources_masks, og_sources, og_masks, rois):
     from the OG sources, then predict the mask using the network and
     integrate that brightness too.'''
 
-    # For now, set these manually
-    image_depth = 51
-    image_height = 200
-    image_width = 200
-    nclasses = 3
 
     # Now load the model to test it's predictions
     use_cuda = not args.no_cuda and torch.cuda.is_available()
@@ -351,12 +354,12 @@ def read_counts(args, sources_masks, og_sources, og_masks, rois):
         model.eval()
 
         with h5py.File(args.save + ".h5", 'w') as hf:
-            asi_actual_hf = hf.create_dataset("asi_actual", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width), chunks=(2, image_depth, image_height, image_width))
-            asj_actual_hf = hf.create_dataset("asj_actual", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width), chunks=(2, image_depth, image_height, image_width))
-            asi_pred_hf = hf.create_dataset("asi_pred", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width), chunks=(2, image_depth, image_height, image_width))
-            asj_pred_hf = hf.create_dataset("asj_pred", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width), chunks=(2, image_depth, image_height, image_width))
-            og_hf = hf.create_dataset("og", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width), chunks=(2, image_depth, image_height, image_width))
-            og_back_hf = hf.create_dataset("og_back", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width), chunks=(2, image_depth, image_height, image_width))
+            asi_actual_hf = hf.create_dataset("asi_actual", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width), chunks=(chunk_size, image_depth, image_height, image_width))
+            asj_actual_hf = hf.create_dataset("asj_actual", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width), chunks=(chunk_size, image_depth, image_height, image_width))
+            asi_pred_hf = hf.create_dataset("asi_pred", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width), chunks=(chunk_size, image_depth, image_height, image_width))
+            asj_pred_hf = hf.create_dataset("asj_pred", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width), chunks=(chunk_size, image_depth, image_height, image_width))
+            og_hf = hf.create_dataset("og", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width), chunks=(chunk_size, image_depth, image_height, image_width))
+            og_back_hf = hf.create_dataset("og_back", (1, image_depth, image_height, image_width), maxshape=(None,  image_depth, image_height, image_width), chunks=(chunk_size, image_depth, image_height, image_width))
             back_hf = hf.create_dataset("back", (1, 1), maxshape=(None, 1))
 
         with open(args.save + ".csv", "w") as w:
@@ -495,6 +498,7 @@ def read_counts(args, sources_masks, og_sources, og_masks, rois):
 
 def compare_masks(original: np.ndarray, predicted: np.ndarray):
     ''' Generate the Jaccard scores for the test set.'''
+    
     # L1 Sum absolute differences
     l1 = np.subtract(original, predicted)
     l1 = np.absolute(l1)
@@ -545,12 +549,27 @@ def compare_masks(original: np.ndarray, predicted: np.ndarray):
     return score
 
 
+def read_chunks(hfdata0, hfdata1, op):
+    ''' Read data in from hdf5 in chunks, performing op, then returning an array of results.'''
+    res = []
+
+    for i in tqdm(range(0, hfdata0.shape[0], chunk_size)):
+        a = np.array(hfdata0[i: i + chunk_size]).reshape(chunk_size,image_depth, image_height, image_width)
+        b = np.array(hfdata1[i: i + chunk_size]).reshape(chunk_size,image_depth, image_height, image_width)
+        c = op(a, b)
+
+        for j in range(0, chunk_size):
+            res.append(float(c[j]))
+
+    return res
+
+
 def do_stats(args):
     ''' Perform the statistics on the HDF5 data.'''
     from scipy.stats import spearmanr, pearsonr
-    from tqdm import tqdm
-
-    idx = 0
+    from tabulate import tabulate
+    from rich.pretty import pprint
+    from rich import print
 
     with h5py.File(args.load + ".h5", 'r') as hf:
         asi_actual_hf = hf['asi_actual']
@@ -558,205 +577,253 @@ def do_stats(args):
         asi_pred_hf = hf['asi_pred']
         asj_pred_hf = hf['asj_pred']
         og_hf = hf['og']
-        og_back = np.array(hf['og_back'])
+        og_back_hf = hf['og_back']
         back = np.array(hf['back'])
 
-        asi_real_count = []
-        asi_pred_count = []
-        asj_real_count = []
-        asj_pred_count = []
+        # Sum operation to perform
+        sum_op = lambda x, y: np.sum(x * y, axis=(1,2,3))
 
-        for i in tqdm(range(0, asi_actual_hf.size[0], asi_actual_hf.chunks[0])):
-            asi_real_count.append(np.sum(asi_actual_hf[i: i + asi_actual_hf.chunks[0]] * og_hf[i: i + asi_actual_hf.chunks[0]], axis=(1,2,3)))
-
-        for i in tqdm(range(0, asj_actual_hf.size[0], asj_actual_hf.chunks[0])):
-            asi_pred_count.append(np.sum(asj_actual_hf[i: i + asj_actual_hf.chunks[0]] * og_hf[i: i + asj_actual_hf.chunks[0]], axis=(1,2,3)))
-
-        for i in tqdm(range(0, asi_pred_hf.size[0], asi_pred_hf.chunks[0])):
-            asj_real_count.append(np.sum(asi_pred_hf[i: i + asi_pred_hf.chunks[0]] * og_hf[i: i + asi_pred_hf.chunks[0]], axis=(1,2,3)))
-        
-        for i in tqdm(range(0, asj_pred_hf.size[0], asj_pred_hf.chunks[0])):
-            asj_pred_count.append(np.sum(asj_pred_hf[i: i + asj_pred_hf.chunks[0]] * og_hf[i: i + asj_pred_hf.chunks[0]], axis=(1,2,3)))
-
-        asi_real_count = np.array(asi_real_count)
-        asi_pred_count = np.array(asi_pred_count)
-        asj_real_count = np.array(asj_real_count)
-        asj_pred_count = np.array(asj_pred_count)
+        pprint("Counts Correlation - Reading Chunks")
+        asi_real_count = np.array(read_chunks(asi_actual_hf, og_hf, sum_op))
+        asj_real_count = np.array(read_chunks(asj_actual_hf, og_hf, sum_op))
+        asi_pred_count = np.array(read_chunks(asi_pred_hf, og_hf, sum_op))
+        asj_pred_count = np.array(read_chunks(asj_pred_hf, og_hf, sum_op))
 
         print("Set size:", len(asi_real_count))
 
-        print("Correlations - spearmans & pearsons - ASI, ASJ - no background removal")
-        asi_combo_cor = spearmanr(asi_real_count, asi_pred_count)
-        asj_combo_cor = spearmanr(asj_real_count, asj_pred_count)
-        print(asi_combo_cor, asj_combo_cor)
-        asi_combo_cor = pearsonr(asi_real_count, asi_pred_count)
-        asj_combo_cor = pearsonr(asj_real_count, asj_pred_count)
-        print(asi_combo_cor, asj_combo_cor)
+        pprint("Correlations - spearmans & pearsons - ASI, ASJ - no background removal")
+        asi_combo_spear = spearmanr(asi_real_count, asi_pred_count)
+        asj_combo_spear = spearmanr(asj_real_count, asj_pred_count)
+        asi_combo_pear = pearsonr(asi_real_count, asi_pred_count)
+        asj_combo_pear = pearsonr(asj_real_count, asj_pred_count)
 
-        '''
-        asi_real_count_back = np.sum(asi_actual * og_back, axis=(1,2,3))
-        asi_pred_count_back = np.sum(asi_pred * og_back, axis=(1,2,3))
-        asj_real_count_back = np.sum(asj_actual * og_back, axis=(1,2,3))
-        asj_pred_count_back = np.sum(asj_pred * og_back, axis=(1,2,3))
+        table0 = [["Neuron", "Spearman", "P-Value", "Pearson", "P-Value"],
+            ["ASI", asi_combo_spear[0], asi_combo_spear[1], asi_combo_pear[0], asi_combo_pear[1]],
+            ["ASJ", asj_combo_spear[0], asj_combo_spear[1], asj_combo_pear[0], asj_combo_pear[1]]]
+        	
+        print(tabulate(table0, headers='firstrow'))
 
-        print("Correlations - spearmans & pearsons - ASI, ASJ - background removed")
-        asi_combo_cor = spearmanr(asi_real_count_back, asi_pred_count_back)
-        asj_combo_cor = spearmanr(asj_real_count_back, asj_pred_count_back)
-        print(asi_combo_cor, asj_combo_cor)
-        asi_combo_cor = pearsonr(asi_real_count_back, asi_pred_count_back)
-        asj_combo_cor = pearsonr(asj_real_count_back, asj_pred_count_back)
-        print(asi_combo_cor, asj_combo_cor)
+        # Now look at background removal
+        pprint("Counts Correlation background removal - Reading Chunks")
+        asi_real_count_back = np.array(read_chunks(asi_actual_hf, og_back_hf, sum_op))
+        asi_pred_count_back = np.array(read_chunks(asi_pred_hf, og_back_hf, sum_op))
+        asj_real_count_back = np.array(read_chunks(asj_actual_hf, og_back_hf, sum_op))
+        asj_pred_count_back = np.array(read_chunks(asj_pred_hf, og_back_hf, sum_op))
+
+        pprint("Correlations - spearmans & pearsons - ASI, ASJ - background removed")
+        
+        asi_combo_spear = spearmanr(asi_real_count_back, asi_pred_count_back)
+        asj_combo_spear = spearmanr(asj_real_count_back, asj_pred_count_back)
+        asi_combo_pear = pearsonr(asi_real_count_back, asi_pred_count_back)
+        asj_combo_pear = pearsonr(asj_real_count_back, asj_pred_count_back)
+
+        table1 = [["Neuron", "Spearman", "P-Value", "Pearson", "P-Value"],
+            ["ASI", asi_combo_spear[0], asi_combo_spear[1], asi_combo_pear[0], asi_combo_pear[1]],
+            ["ASJ", asj_combo_spear[0], asj_combo_spear[1], asj_combo_pear[0], asj_combo_pear[1]]]
+
+        print(tabulate(table1, headers='firstrow'))
+
+
+        # Anything this score or above is in the 95th percentile
+        p95 = 291
+
+        # Have a look at the border areas
+        pprint("Analysing the Border Pixels")
 
         border_asi_values_actual = []
         border_asj_values_actual = []
-
         border_asi_values_pred = []
         border_asj_values_pred = []
 
+        border_asi_95_actual = []
+        border_asj_95_actual = []
+        border_asi_95_pred = []
+        border_asj_95_pred = []
+
         # Find the border
-        for idx in range(len(asi_real_count)):
-            asi_pred_single = asi_pred[idx]
-            asj_pred_single = asj_pred[idx]
+        for i in tqdm(range(0, asi_pred_hf.shape[0], chunk_size)):
 
-            asi_actual_single = asi_actual[idx]
-            asj_actual_single = asj_actual[idx]
+            asi_pred_chunk = np.array(asi_pred_hf[i: i + chunk_size]).reshape(chunk_size,image_depth, image_height, image_width)
+            asj_pred_chunk = np.array(asj_pred_hf[i: i + chunk_size]).reshape(chunk_size,image_depth, image_height, image_width)
+            asi_actual_chunk = np.array(asi_actual_hf[i: i + chunk_size]).reshape(chunk_size,image_depth, image_height, image_width)
+            asj_actual_chunk = np.array(asj_actual_hf[i: i + chunk_size]).reshape(chunk_size,image_depth, image_height, image_width)
+            og_chunk = np.array(og_hf[i: i + chunk_size]).reshape(chunk_size,image_depth, image_height, image_width)
 
-            border_image_asi_pred = find_border(asi_pred_single)
-            border_image_asj_pred = find_border(asj_pred_single)
+            for j in range(0, chunk_size):
 
-            border_image_asi_actual = find_border(asi_actual_single)
-            border_image_asj_actual = find_border(asj_actual_single)
-            #border_image_asi = np.where(border_image_asi > 0, 1, 0)
-            #border_image_asj = np.where(border_image_asj > 0, 1, 0)
-           
-            border_asi_values_pred.append(np.sum(border_image_asi_pred * og[idx]) / np.sum(border_image_asi_pred))
-            border_asj_values_pred.append(np.sum(border_image_asj_pred * og[idx]) / np.sum(border_image_asj_pred))
+                asi_pred_single = asi_pred_chunk[j].reshape(1, image_depth, image_height, image_width)
+                asj_pred_single = asj_pred_chunk[j].reshape(1, image_depth, image_height, image_width)
+                asi_actual_single = asi_actual_chunk[j].reshape(1, image_depth, image_height, image_width)
+                asj_actual_single = asj_actual_chunk[j].reshape(1, image_depth, image_height, image_width)
+                og = og_chunk[j].reshape(1, image_depth, image_height, image_width)
 
-            border_asi_values_actual.append(np.sum(border_image_asi_actual * og[idx]) / np.sum(border_image_asi_actual))
-            border_asj_values_actual.append(np.sum(border_image_asj_actual * og[idx]) / np.sum(border_image_asj_actual))
+                border_image_asi_pred = find_border(asi_pred_single)
+                border_image_asj_pred = find_border(asj_pred_single)
 
-            # Can save out the images if we so desire, to check it's all working
-            #save_fits(border_image_asi, "border_asi_" + str(idx) + ".fits")
-            #save_fits(border_image_asj, "border_asj_" + str(idx) + ".fits")
-            #save_fits(asi_pred_single, "asi_pred_" + str(idx) + ".fits")
-            #save_fits(asi_actual_single, "asi_actual_" + str(idx) + ".fits")
-            #save_fits(asj_pred_single, "asj_" + str(idx) + ".fits")
+                border_image_asi_actual = find_border(asi_actual_single)
+                border_image_asj_actual = find_border(asj_actual_single)
+            
+                tt = (border_image_asi_pred * og).flatten(); tt = tt[tt != 0]; border_asi_values_pred = border_asi_values_pred + list(tt)
+                tt = (border_image_asj_pred * og).flatten(); tt = tt[tt != 0]; border_asj_values_pred = border_asj_values_pred + list(tt)
+                tt = (border_image_asi_actual * og).flatten(); tt = tt[tt != 0]; border_asi_values_actual = border_asi_values_actual + list(tt)
+                tt = (border_image_asj_actual * og).flatten(); tt = tt[tt != 0]; border_asj_values_actual = border_asj_values_actual + list(tt)
 
-        print("ASI Actual Border mean median std", np.mean(border_asi_values_actual), np.median(border_asi_values_actual), np.std(border_asi_values_actual))
-        print("ASJ Actual Border mean median std", np.mean(border_asj_values_actual), np.median(border_asj_values_actual), np.std(border_asj_values_actual))
-        print("ASI Pred Border mean median std", np.mean(border_asi_values_pred), np.median(border_asi_values_pred), np.std(border_asi_values_pred))
-        print("ASJ Pred Border mean median std", np.mean(border_asj_values_pred), np.median(border_asi_values_pred), np.std(border_asi_values_pred))
+                border_asi_95_actual.append( (np.sum(np.where((border_image_asi_actual * og) > p95, 1, 0)) / np.sum(border_image_asi_actual)) * 100.0)
+                border_asj_95_actual.append( (np.sum(np.where((border_image_asj_actual * og) > p95, 1, 0)) / np.sum(border_image_asj_actual)) * 100.0)
+                border_asi_95_pred.append( (np.sum(np.where((border_image_asi_pred * og) > p95, 1, 0)) / np.sum(border_image_asi_pred)) * 100.0)
+                border_asj_95_pred.append( (np.sum(np.where((border_image_asj_pred * og) > p95, 1, 0)) / np.sum(border_image_asj_pred)) * 100.0)
 
-        # Look at the false positives and false negatives
-        asi_pred_inv = np.where(asi_pred == 1, 0, 1)
-        asj_pred_inv = np.where(asj_pred == 1, 0, 1)
-
-        asi_mask_inv = np.where(asi_actual == 1, 0, 1)
-        asj_mask_inv = np.where(asj_actual == 1, 0, 1)
-
-        asi_false_pos = asi_mask_inv * asi_pred
-        asj_false_pos = asj_mask_inv * asj_pred
-
-        asi_false_neg = asi_actual * asi_pred_inv
-        asj_false_neg = asj_actual * asj_pred_inv
-
-        # Pixel values in these areas
-        ts = asi_false_neg.shape
-        ds = ts[0]
-        ts = ts[1] * ts[2] * ts[3]
-        count_asi_false_pos = asi_false_pos * og; count_asi_false_pos = count_asi_false_pos.flatten(); count_asi_false_pos = count_asi_false_pos[count_asi_false_pos != 0]
-        count_asi_false_neg = asi_false_neg * og; count_asi_false_neg = count_asi_false_neg.flatten(); count_asi_false_neg = count_asi_false_neg[count_asi_false_neg != 0]
-
-        count_asj_false_pos = asj_false_pos * og; count_asj_false_pos = count_asj_false_pos.flatten(); count_asj_false_pos = count_asj_false_pos[count_asj_false_pos != 0]
-        count_asj_false_neg = asj_false_neg * og; count_asj_false_neg = count_asj_false_neg.flatten(); count_asj_false_neg = count_asj_false_neg[count_asj_false_neg != 0]
-
-        print("ASI False Pos Mean / Median / Std :", np.mean(count_asi_false_pos), np.median(count_asi_false_pos), np.std(count_asi_false_pos))
-        print("ASJ False Pos Mean / Median / Std :", np.mean(count_asj_false_pos), np.median(count_asj_false_pos), np.std(count_asj_false_pos))
-
-        print("ASI False Neg Mean / Median / Std :", np.mean(count_asi_false_neg), np.median(count_asi_false_neg), np.std(count_asi_false_neg))
-        print("ASJ False Neg Mean / Median / Std :", np.mean(count_asj_false_neg), np.median(count_asj_false_neg), np.std(count_asj_false_neg))
-
-        asi_real_areas = np.sum(asi_actual, axis=(1,2,3))
-        asi_pred_areas = np.sum(asi_pred, axis=(1,2,3))
-        asj_real_areas = np.sum(asi_actual, axis=(1,2,3))
-        asj_pred_areas = np.sum(asj_pred, axis=(1,2,3))
-        print("ASI Actual Areas Mean / Median / Std :", np.mean(asi_real_areas), np.median(asi_real_areas), np.std(asi_real_areas))
-        print("ASI Pred Areas Mean / Median / Std :", np.mean(asi_pred_areas), np.median(asi_pred_areas), np.std(asi_pred_areas))
-        print("ASJ Actual Areas Mean / Median / Std :", np.mean(asj_real_areas), np.median(asj_real_areas), np.std(asj_real_areas))
-        print("ASJ Pred Areas Mean / Median / Std :", np.mean(asj_pred_areas), np.median(asj_pred_areas), np.std(asj_pred_areas))
-
-        asi_false_pos_areas = np.sum(asi_false_pos, axis=(1,2,3))
-        asi_false_neg_areas = np.sum(asi_false_neg, axis=(1,2,3))
-        asj_false_pos_areas = np.sum(asj_false_pos, axis=(1,2,3))
-        asj_false_neg_areas = np.sum(asj_false_neg, axis=(1,2,3))
-
-        print("ASI False Pos Areas Mean / Median / Std :", np.mean(asi_false_pos_areas), np.median(asi_false_pos_areas), np.std(asi_false_pos_areas))
-        print("ASI False Neg Areas Mean / Median / Std :", np.mean(asi_false_neg_areas), np.median(asi_false_neg_areas), np.std(asi_false_neg_areas))
-        print("ASJ False Pos Areas Mean / Median / Std :", np.mean(asj_false_pos_areas), np.median(asj_false_pos_areas), np.std(asj_false_pos_areas))
-        print("ASJ False Neg Areas Mean / Median / Std :", np.mean(asj_false_neg_areas), np.median(asj_false_neg_areas), np.std(asj_false_neg_areas))
-
-        '''
-
-        '''
-
-        # We need to see the values in our predicted masks versus the original masks to see which dist is better
-        sig_value = 291
-        asi_actual = np.array(data["asi_1_actual"][0]).flatten()
-
-        for fp in data["asi_1_actual"][1:]:
-            tp = np.array(fp).flatten()
-            asi_actual = np.concatenate((asi_actual, tp))
-
-        asi_actual = np.delete(asi_actual, np.where(asi_actual == 0.0))
-
-        asi_pred = np.array(data["asi_1_pred"][0]).flatten()
-
-        for fp in data["asi_1_pred"][1:]:
-            tp = np.array(fp).flatten()
-            asi_pred = np.concatenate((asi_pred, tp))
-
-        asi_pred = np.delete(asi_pred, np.where(asi_pred == 0.0))
-
+                # Can save out the images if we so desire, to check it's all working
+                #save_fits(border_image_asi, "border_asi_" + str(idx) + ".fits")
+                #save_fits(border_image_asj, "border_asj_" + str(idx) + ".fits")
+                #save_fits(asi_pred_single, "asi_pred_" + str(idx) + ".fits")
+                #save_fits(asi_actual_single, "asi_actual_" + str(idx) + ".fits")
+                #save_fits(asj_pred_single, "asj_" + str(idx) + ".fits")
         
-        # Plot a histogram for ASJ
-        sns.set_theme(style="whitegrid")
-        fig, ax = plt.subplots()
-        ax.hist(asi_actual, bins=100, label='ASI Base', alpha=.5, color='blue')
-        ax.hist(asi_pred, bins=100,  label='ASI Predicted', alpha=.5, color='red')
-        ax.set_xlabel('Intensity Value')
-        ax.set_ylabel('Count')
-        ax.set_title("Histogram of intensity values in the original and predicted masks for ASI.")
-        ax.legend()
-        plt.show()
+        table2 = [["Neuron", "Mean", "Median", "Standard", "Above 95th Median"],
+            ["ASI Original", np.mean(border_asi_values_actual), np.median(border_asi_values_actual), np.std(border_asi_values_actual), np.median(border_asi_95_actual)],
+            ["ASJ Original", np.mean(border_asj_values_actual), np.median(border_asj_values_actual), np.std(border_asj_values_actual), np.median(border_asj_95_actual)],
+            ["ASI Predicted", np.mean(border_asi_values_pred), np.median(border_asi_values_pred), np.std(border_asi_values_pred), np.median(border_asi_95_pred)],
+            ["ASJ Predicted", np.mean(border_asj_values_pred), np.median(border_asj_values_pred), np.std(border_asj_values_pred), np.median(border_asj_95_pred)]]
 
-        # Now go with ASJ
-        asj_actual = np.array(data["asj_1_actual"][0]).flatten()
+        print(tabulate(table2, headers='firstrow'))
 
-        for fp in data["asj_1_actual"][1:]:
-            tp = np.array(fp).flatten()
-            asj_actual = np.concatenate((asj_actual, tp))
+        # Look at the false postives and false negatives, the areas of the predicted and original sizes and the scores above 95th percentile
+        pprint("Analysing the False Positive and False Negative Voxels")
 
-        asj_actual = np.delete(asj_actual, np.where(asj_actual == 0.0))
-        asj_pred = np.array(data["asj_1_pred"][0]).flatten()
+        false_op = lambda x, y: y * np.where(x == 1, 0, 1)
+        count_asi_false_pos = []
+        count_asj_false_pos = []
+        count_asi_false_neg = []
+        count_asj_false_neg = []
 
-        for fp in data["asj_1_pred"][1:]:
-            tp = np.array(fp).flatten()
-            asj_pred = np.concatenate((asj_pred, tp))
+        area_asi_false_pos = []
+        area_asj_false_pos = []
+        area_asi_false_neg = []
+        area_asj_false_neg = []
 
-        asj_pred = np.delete(asj_pred, np.where(asj_pred == 0.0))
+        area_asi_pred = []
+        area_asj_pred = []
+        area_asi_actual = []
+        area_asj_actual = []
 
-        # Plot a histogram for ASI
-        sns.set_theme(style="whitegrid")
-        fig, ax = plt.subplots()
-        ax.hist(asj_actual, bins=100, label='ASJ Base', alpha=.5, color='blue')
-        ax.hist(asj_pred, bins=100,  label='ASJ Predicted', alpha=.5, color='red')
-        ax.set_xlabel('Intensity Value')
-        ax.set_ylabel('Count')
-        ax.set_title("Histogram of intensity values in the original and predicted masks for ASJ.")
-        ax.legend()
-        plt.show()
+        asi_95_actual = []
+        asj_95_actual = []
+        asi_95_pred = []
+        asj_95_pred = []
 
-        '''
+        asi_fp_95 = []
+        asj_fp_95 = []
+        asi_fn_95 = []
+        asj_fn_95 = []
+
+        for i in tqdm(range(0, asi_pred_hf.shape[0], chunk_size)):
+            asi_pred = np.array(asi_pred_hf[i: i + chunk_size]).reshape(chunk_size,image_depth, image_height, image_width)
+            asj_pred = np.array(asj_pred_hf[i: i + chunk_size]).reshape(chunk_size,image_depth, image_height, image_width)
+            asi_actual = np.array(asi_actual_hf[i: i + chunk_size]).reshape(chunk_size,image_depth, image_height, image_width)
+            asj_actual = np.array(asj_actual_hf[i: i + chunk_size]).reshape(chunk_size,image_depth, image_height, image_width)
+            og_chunk = np.array(og_hf[i: i + chunk_size]).reshape(chunk_size,image_depth, image_height, image_width)
+
+            asi_false_pos = false_op(asi_actual, asi_pred)
+            asj_false_pos = false_op(asj_actual, asj_pred)
+            asi_false_neg = false_op(asi_pred, asi_actual)
+            asj_false_neg = false_op(asj_pred, asj_actual)
+
+            for j in range(0, chunk_size):
+                asi_95_actual.append( (np.sum(np.where((asi_actual[j] * og_chunk[j]) > p95, 1, 0)) / np.sum(asi_actual[j])) * 100.0)
+                asj_95_actual.append( (np.sum(np.where((asj_actual[j] * og_chunk[j]) > p95, 1, 0)) / np.sum(asj_actual[j])) * 100.0)
+                asi_95_pred.append( (np.sum(np.where((asi_pred[j] * og_chunk[j]) > p95, 1, 0)) / np.sum(asi_pred[j])) * 100.0)
+                asj_95_pred.append( (np.sum(np.where((asj_pred[j] * og_chunk[j]) > p95, 1, 0)) / np.sum(asj_pred[j])) * 100.0)
+
+                asi_fp_95.append( (np.sum(np.where((asi_false_pos[j] * og_chunk[j]) > p95, 1, 0)) / np.sum(asi_false_pos[j])) * 100.0)
+                asj_fp_95.append( (np.sum(np.where((asj_false_pos[j] * og_chunk[j]) > p95, 1, 0)) / np.sum(asj_false_pos[j])) * 100.0)
+                asi_fn_95.append( (np.sum(np.where((asi_false_neg[j] * og_chunk[j]) > p95, 1, 0)) / np.sum(asi_false_neg[j])) * 100.0)
+                asj_fn_95.append( (np.sum(np.where((asj_false_neg[j] * og_chunk[j]) > p95, 1, 0)) / np.sum(asj_false_neg[j])) * 100.0)
+
+            area = np.sum(asi_pred); area = list(area.flatten()); area_asi_pred = area_asi_pred + area
+            area = np.sum(asj_pred); area = list(area.flatten()); area_asj_pred = area_asj_pred + area
+            area = np.sum(asi_actual); area = list(area.flatten()); area_asi_actual = area_asi_actual + area
+            area = np.sum(asj_actual); area = list(area.flatten()); area_asj_actual = area_asj_actual + area
+
+            area = np.sum(asi_false_pos); area = list(area.flatten()); area_asi_false_pos = area_asi_false_pos + area
+            area = np.sum(asj_false_pos); area = list(area.flatten()); area_asj_false_pos = area_asj_false_pos + area
+            area = np.sum(asi_false_neg); area = list(area.flatten()); area_asi_false_neg = area_asi_false_neg + area
+            area = np.sum(asj_false_neg); area = list(area.flatten()); area_asj_false_neg = area_asj_false_neg + area
+
+            asi_false_pos = asi_false_pos * og_chunk; asi_false_pos = asi_false_pos.flatten()
+            asj_false_pos = asj_false_pos * og_chunk; asj_false_pos = asj_false_pos.flatten()
+            asi_false_neg = asi_false_neg * og_chunk; asi_false_neg = asi_false_neg.flatten()
+            asj_false_neg = asj_false_neg * og_chunk; asj_false_neg = asj_false_neg.flatten()
+
+            asi_false_pos = asi_false_pos[asi_false_pos !=0]
+            asj_false_pos = asj_false_pos[asj_false_pos !=0]
+            asi_false_neg = asi_false_neg[asi_false_neg !=0]
+            asj_false_neg = asj_false_neg[asj_false_neg !=0]
+
+            count_asi_false_pos = count_asi_false_pos + list(asi_false_pos)
+            count_asj_false_pos = count_asj_false_pos + list(asj_false_pos)
+            count_asi_false_neg = count_asi_false_neg + list(asi_false_neg)
+            count_asj_false_neg = count_asj_false_neg + list(asj_false_neg)
+
+        table3 = [["Neuron", "Mean", "Median", "Standard"],
+            ["ASI False Pos", np.mean(count_asi_false_pos), np.median(count_asi_false_pos), np.std(count_asi_false_pos)],
+            ["ASJ False Pos", np.mean(count_asj_false_pos), np.median(count_asj_false_pos), np.std(count_asj_false_pos)],
+            ["ASI False Neg", np.mean(count_asi_false_neg), np.median(count_asi_false_neg), np.std(count_asi_false_neg)],
+            ["ASJ False Neg", np.mean(count_asj_false_neg), np.median(count_asj_false_neg), np.std(count_asj_false_neg)]]
+
+        print(tabulate(table3, headers='firstrow'))
+
+        table4 = [["Neuron", "Mean", "Median", "Standard", "Above 95th Median"],
+            ["ASI Pred Areas", np.mean(area_asi_pred), np.median(area_asi_pred), np.std(area_asi_pred), np.median(asi_95_pred)],
+            ["ASJ Pred Areas", np.mean(area_asj_pred), np.median(area_asj_pred), np.std(area_asj_pred), np.median(asj_95_pred)],
+            ["ASI Actual Areas", np.mean(area_asi_actual), np.median(area_asi_actual), np.std(area_asi_actual), np.median(asi_95_actual)],
+            ["ASJ Acutal Areas", np.mean(area_asj_actual), np.median(area_asj_actual), np.std(area_asj_actual), np.median(asj_95_actual)],
+            ["ASI False Pos Areas", np.mean(area_asi_false_pos), np.median(area_asi_false_pos), np.std(area_asi_false_pos), np.median(asi_fp_95)],
+            ["ASJ False Pos Areas", np.mean(area_asj_false_pos), np.median(area_asj_false_pos), np.std(area_asj_false_pos), np.median(asj_fp_95)],
+            ["ASI False Neg Areas", np.mean(area_asi_false_neg), np.median(area_asi_false_neg), np.std(area_asi_false_neg), np.median(asi_fn_95)],
+            ["ASJ False Neg Areas", np.mean(area_asj_false_neg), np.median(area_asj_false_neg), np.std(area_asj_false_neg), np.median(asj_fn_95)]]
+
+        print(tabulate(table4, headers='firstrow'))
+
+
+        # Now have a quick look at the scores in each area
+        pprint("Average scores in original and predicted areas")
+
+        scores_asi_pred = []
+        scores_asj_pred = []
+        scores_asi_actual = []
+        scores_asj_actual = []
+
+        for i in tqdm(range(0, asi_pred_hf.shape[0], chunk_size)):
+
+            asi_pred_chunk = np.array(asi_pred_hf[i: i + chunk_size]).reshape(chunk_size,image_depth, image_height, image_width)
+            asj_pred_chunk = np.array(asj_pred_hf[i: i + chunk_size]).reshape(chunk_size,image_depth, image_height, image_width)
+            asi_actual_chunk = np.array(asi_actual_hf[i: i + chunk_size]).reshape(chunk_size,image_depth, image_height, image_width)
+            asj_actual_chunk = np.array(asj_actual_hf[i: i + chunk_size]).reshape(chunk_size,image_depth, image_height, image_width)
+            og_chunk = np.array(og_hf[i: i + chunk_size]).reshape(chunk_size,image_depth, image_height, image_width)
+
+            for j in range(0, chunk_size):
+
+                asi_pred_single = asi_pred_chunk[j].reshape(1, image_depth, image_height, image_width)
+                asj_pred_single = asj_pred_chunk[j].reshape(1, image_depth, image_height, image_width)
+                asi_actual_single = asi_actual_chunk[j].reshape(1, image_depth, image_height, image_width)
+                asj_actual_single = asj_actual_chunk[j].reshape(1, image_depth, image_height, image_width)
+                og = og_chunk[j].reshape(1, image_depth, image_height, image_width)
+
+                tt = og * asi_pred_single; tt = tt.flatten(); tt = tt[tt !=0]; scores_asi_pred = scores_asi_pred + list(tt)
+                tt = og * asj_pred_single; tt = tt.flatten(); tt = tt[tt !=0]; scores_asj_pred = scores_asj_pred + list(tt)
+                tt = og * asi_actual_single; tt = tt.flatten(); tt = tt[tt !=0]; scores_asi_actual = scores_asi_actual + list(tt)
+                tt = og * asj_actual_single; tt = tt.flatten(); tt = tt[tt !=0]; scores_asj_actual = scores_asj_actual + list(tt)
+
+
+        table5 = [["Neuron", "Mean", "Median", "Standard"],
+            ["ASI Pred Values", np.mean(scores_asi_pred), np.median(scores_asi_pred), np.std(scores_asi_pred)],
+            ["ASJ Pred Values", np.mean(scores_asj_pred), np.median(scores_asj_pred), np.std(scores_asj_pred)],
+            ["ASI Actual Values", np.mean(scores_asi_actual), np.median(scores_asi_actual), np.std(scores_asi_actual)],
+            ["ASJ Acutal Values", np.mean(scores_asj_actual), np.median(scores_asj_actual), np.std(scores_asj_actual)]]
+
+        print(tabulate(table5, headers='firstrow'))
+
 
         '''
         # Lets take a look at the entropy in these areas
@@ -903,7 +970,10 @@ def csv_stats(csv_path):
     """ If we have already computed the stats, lets present some averages 
     and visualise. """
     import csv
-
+    from tabulate import tabulate
+    from rich.pretty import pprint
+    from rich import print
+    
     scores  = []
 
     with open(csv_path) as csvfile:
@@ -939,13 +1009,20 @@ def csv_stats(csv_path):
     asi_fn = np.array(asi_fn)
     asj_fn = np.array(asj_fn)
 
-    print("ASI Jaccard Scores min, max, mean, median, std", min(asi_jacc),  max(asi_jacc),  np.mean(asi_jacc), np.median(asi_jacc), np.std(asi_jacc))
-    print("ASJ Jaccard Scores min, max, mean, median, std", min(asj_jacc),  max(asj_jacc),  np.mean(asj_jacc), np.median(asj_jacc), np.std(asj_jacc))
-    print("all Jaccard Scores min, max, mean, median, std", min(all_jacc),  max(all_jacc),  np.mean(all_jacc), np.median(all_jacc), np.std(all_jacc))
+    pprint("Jaccard Scores")
+    table0 = [ ["Neuron", "Min", "Max", "Mean", "Median", "Std.Dev"],
+            ["ASI", min(asi_jacc),  max(asi_jacc),  np.mean(asi_jacc), np.median(asi_jacc), np.std(asi_jacc)],
+            ["ASJ", min(asj_jacc),  max(asj_jacc),  np.mean(asj_jacc), np.median(asj_jacc), np.std(asj_jacc)],
+            ["Both", min(all_jacc),  max(all_jacc),  np.mean(all_jacc), np.median(all_jacc), np.std(all_jacc)]]
+        	
+    print(tabulate(table0, headers='firstrow'))
 
-    print("Num ASI with scores < 0.5", len( asi_jacc[asi_jacc < 0.5]))
-    print("Num ASJ with scores < 0.5",len( asi_jacc[asj_jacc < 0.5]))
-
+    pprint("Number of Jaccard scores below 0.5 for each neuron")
+    table1 = [["Neuron", "Num scores below 0.5"],
+        ["ASI", len(asi_jacc[asi_jacc < 0.5])],
+        ["ASJ", len(asi_jacc[asj_jacc < 0.5])]]
+    
+    print(tabulate(table1, headers='firstrow'))
 
 if __name__ == "__main__":
     # Training settings
